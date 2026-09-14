@@ -1,0 +1,115 @@
+{{- define "masthead" -}}
+<header class="masthead">
+  <div class="masthead__strap">
+    <span>{{ .Site.City }} · собственное производство</span>
+    <span>{{ .Site.Tagline }}</span>
+    <span>{{ .Site.Warranty }}</span>
+  </div>
+  <div class="rule-thick"></div>
+  <div class="masthead__row">
+    <a class="logo" href="/">Кино<b>периферия</b></a>
+    <nav class="nav" aria-label="Основное меню">
+      <a href="/catalog"{{ if eq .Nav "catalog" }} aria-current="page"{{ end }}>Каталог</a>
+      <a href="/#custom">На заказ</a>
+      <a href="/#about">Производство</a>
+      <a href="/#delivery">Доставка</a>
+      <a href="/order"{{ if eq .Nav "order" }} aria-current="page"{{ end }}>Заявка</a>
+      <a class="nav__tg" href="{{ .Site.Telegram }}" target="_blank" rel="noopener noreferrer">Telegram ↗</a>
+    </nav>
+  </div>
+  <div class="rule-thin"></div>
+</header>
+{{- end -}}
+
+{{- define "ticker" -}}
+<div class="ticker" aria-hidden="true">
+  <div class="ticker__track">
+    <div class="ticker__group">{{ range .Site.TickerItems }}<span>{{ . }}</span>{{ end }}</div>
+    <div class="ticker__group">{{ range .Site.TickerItems }}<span>{{ . }}</span>{{ end }}</div>
+  </div>
+</div>
+{{- end -}}
+
+{{- define "card" -}}
+<a class="card" href="/product/{{ .Slug }}" data-quick-view="{{ .Slug }}">
+  <div class="card__media">
+    <img class="card__img" src="{{ .Image }}" alt="{{ .Alt }}" loading="lazy" decoding="async" width="540" height="540">
+    <span class="card__kicker">{{ .Kicker }}</span>
+  </div>
+  <div class="card__meta"><span>{{ .Art }}</span><span>{{ .CategoryTitle }}</span></div>
+  <h3 class="card__name">{{ .Name }}</h3>
+  <p class="card__desc">{{ .Desc }}</p>
+  <div class="price-row">
+    <span class="price">{{ .PriceLabel }}</span>
+    {{- with .OldPriceLabel }}<span class="price--old">{{ . }}</span>{{ end }}
+  </div>
+</a>
+{{- end -}}
+
+{{- define "catalog-section" -}}
+<section id="catalog" class="section section--flush-bottom">
+  <div class="section__head">
+    <div>
+      <div class="eyebrow">Каталог · {{ .Catalog.CountLabel }}</div>
+      <h2 class="section__title">{{ .Catalog.Heading }}</h2>
+    </div>
+    <p class="section__note">Наличие и сроки уточняем в Telegram — большинство позиций держим на складе.</p>
+  </div>
+
+  <form class="toolbar" method="get" action="{{ .Catalog.Action }}" data-catalog-form>
+    <div class="filters" role="group" aria-label="Фильтр по категориям">
+      {{- range .Catalog.Categories }}
+      <a class="chip" href="{{ .URL }}"{{ if .Active }} aria-current="true"{{ end }} data-filter="{{ .Slug }}">{{ .Title }}</a>
+      {{- end }}
+    </div>
+    <div class="sort">
+      <label for="sort">Сортировка</label>
+      <select id="sort" name="sort">
+        {{- range .Catalog.SortOptions }}
+        <option value="{{ .Value }}"{{ if .Selected }} selected{{ end }}>{{ .Title }}</option>
+        {{- end }}
+      </select>
+      {{- if .Catalog.ActiveCategory }}
+      <input type="hidden" name="cat" value="{{ .Catalog.ActiveCategory }}">
+      {{- end }}
+      <button class="chip sort__submit" type="submit">Применить</button>
+    </div>
+  </form>
+
+  <div class="rule-thin" style="margin-top: var(--space-6)"></div>
+
+  {{- if .Catalog.Products }}
+  <div class="grid" id="catalog-grid">
+    {{- range .Catalog.Products }}
+    {{ template "card" . }}
+    {{- end }}
+  </div>
+  {{- else }}
+  <p class="empty" id="catalog-grid">В этой категории пока пусто. Загляните в другие разделы или напишите в Telegram — сошьём под задачу.</p>
+  {{- end }}
+</section>
+{{- end -}}
+
+{{- define "contacts" -}}
+<section id="contacts" class="section section--flush-top">
+  <div class="rule-thick"></div>
+  <div class="contacts" data-reveal>
+    <h2 class="contacts__title">Расскажите, что нужно <span class="italic-accent">сшить.</span></h2>
+    <div>
+      <p class="contacts__text">Быстрее всего — написать в Telegram и приложить фотографии, размеры или список оборудования. Можно и через <a href="/order" style="color:var(--yellow)">форму заявки</a>.</p>
+      <div class="link-list">
+        <a href="{{ .Site.Telegram }}" target="_blank" rel="noopener noreferrer"><span>Telegram {{ .Site.TelegramTag }}</span><span>↗</span></a>
+        <a href="{{ .Site.PhoneHref }}"><span>{{ .Site.Phone }}</span><span>↗</span></a>
+        <a href="{{ .Site.EmailHref }}"><span>{{ .Site.Email }}</span><span>↗</span></a>
+      </div>
+    </div>
+  </div>
+</section>
+{{- end -}}
+
+{{- define "site-footer" -}}
+<footer class="site-footer">
+  <span>{{ .Site.Brand }} © {{ .Year }}</span>
+  <span>{{ .Site.Tagline }} · {{ .Site.City }}</span>
+</footer>
+{{- end -}}

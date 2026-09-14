@@ -1,0 +1,18 @@
+{{- define "content" -}}
+{{ template "catalog-section" . }}
+
+<section class="section section--flush-top">
+  <div class="rule-thin"></div>
+  <div class="contacts" data-reveal>
+    <h2 class="contacts__title">Не нашли нужное? <span class="italic-accent">Сошьём.</span></h2>
+    <div>
+      <p class="contacts__text">Опишите задачу — подберём готовое изделие из каталога или предложим конструкцию под ваш сетап. Можно через <a href="/order" style="color:var(--yellow)">форму заявки</a>.</p>
+      <div class="link-list">
+        <a href="{{ .Site.Telegram }}" target="_blank" rel="noopener noreferrer"><span>Telegram {{ .Site.TelegramTag }}</span><span>↗</span></a>
+        <a href="{{ .Site.PhoneHref }}"><span>{{ .Site.Phone }}</span><span>↗</span></a>
+        <a href="{{ .Site.EmailHref }}"><span>{{ .Site.Email }}</span><span>↗</span></a>
+      </div>
+    </div>
+  </div>
+</section>
+{{- end -}}
