@@ -1,0 +1,41 @@
+{{- define "base" -}}
+<!DOCTYPE html>
+<html lang="ru" class="no-js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ .Title }}</title>
+<meta name="description" content="{{ .Description }}">
+<link rel="canonical" href="{{ .Canonical }}">
+<meta property="og:type" content="{{ if .OGType }}{{ .OGType }}{{ else }}website{{ end }}">
+<meta property="og:site_name" content="{{ .Site.Brand }}">
+<meta property="og:title" content="{{ .Title }}">
+<meta property="og:description" content="{{ .Description }}">
+<meta property="og:url" content="{{ .Canonical }}">
+{{- with .OGImage }}
+<meta property="og:image" content="{{ . }}">
+{{- end }}
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#141210">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<link rel="stylesheet" href="{{ asset "/static/css/style.css" }}">
+<link rel="icon" href="{{ asset "/static/favicon.svg" }}" type="image/svg+xml">
+<script>document.documentElement.className = document.documentElement.className.replace('no-js', 'js');</script>
+{{- with .JSONLD }}
+<script type="application/ld+json">{{ . }}</script>
+{{- end }}
+</head>
+<body>
+<a class="skip-link" href="#main">К основному содержанию</a>
+{{ template "masthead" . }}
+<main id="main">
+{{ template "content" . }}
+</main>
+{{ template "site-footer" . }}
+<div id="quick-view" class="overlay" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-label="Быстрый просмотр изделия"></div>
+<script src="{{ asset "/static/js/app.js" }}" defer></script>
+</body>
+</html>
+{{- end -}}

@@ -1,0 +1,88 @@
+{{- define "content" -}}
+<nav class="bar" aria-label="Навигация по каталогу">
+  <a class="bar__close" href="{{ .BackURL }}">← {{ .Product.CategoryTitle }}</a>
+  <span class="meta">{{ .Product.Art }}</span>
+</nav>
+<div class="rule-thin bar__rule"></div>
+
+<article class="product">
+  <figure class="product__figure">
+    {{- if .Product.HasPhoto }}
+    <img class="product__img" src="{{ .Product.Image }}" alt="{{ .Product.Alt }}" width="1000" height="1250" fetchpriority="high" decoding="async">
+    <figcaption class="product__caption">{{ .Product.Alt }}</figcaption>
+    {{- else }}
+    {{ template "photo-placeholder" .Product }}
+    <figcaption class="product__caption">{{ .Product.Art }} · {{ .Product.CategoryTitle }}</figcaption>
+    {{- end }}
+  </figure>
+  <div>
+    <div class="eyebrow product__tag">{{ .Product.Tag }}</div>
+    <h1 class="product__name">{{ .Product.Name }}</h1>
+    <p class="product__desc">{{ .Product.Detail }}</p>
+    <div class="product__price-row">
+      <span class="product__price">{{ .Product.PriceLabel }}</span>
+      {{- with .Product.OldPriceLabel }}<span class="product__old">{{ . }}</span>{{ end }}
+    </div>
+    {{- if not .Product.InStock }}
+    <p class="form__hint" style="margin-top: var(--space-3)">Позиции сейчас нет в наличии — напишите в Telegram, уточним сроки изготовления.</p>
+    {{- end }}
+    {{- if .Product.HasUnknownPrice }}
+    <p class="form__hint" style="margin-top: var(--space-3)">XXX — цену этого исполнения ещё согласовываем. Напишите в Telegram, назовём её сразу.</p>
+    {{- end }}
+
+    {{- if .Product.HasVariants }}
+    <table class="variants">
+      <caption class="variants__caption">Исполнения и цены</caption>
+      <thead>
+        <tr>
+          {{- range .Product.OptionNames }}
+          <th scope="col">{{ . }}</th>
+          {{- end }}
+          <th scope="col" class="variants__price">Цена</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{- range $v := .Product.Variants }}
+        <tr>
+          {{- range $v.Values }}
+          <td>{{ . }}</td>
+          {{- end }}
+          <td class="variants__price{{ if not $v.Price }} variants__price--unknown{{ end }}">{{ $v.PriceLabel }}</td>
+        </tr>
+        {{- end }}
+      </tbody>
+    </table>
+    {{- end }}
+
+    <dl class="specs">
+      {{- range .Product.Specs }}
+      <div><dt>{{ .Name }}</dt><dd>{{ .Value }}</dd></div>
+      {{- end }}
+    </dl>
+    <div class="product__actions">
+      <a class="btn btn--solid" href="{{ .TelegramHref }}" target="_blank" rel="noopener noreferrer">Уточнить наличие и заказать ↗</a>
+      <a class="btn btn--ghost" href="/order?product={{ .Product.Slug }}">Оставить заявку</a>
+    </div>
+  </div>
+</article>
+
+{{- if .Related }}
+<section class="section section--flush-top">
+  <div class="rule-thin"></div>
+  <div class="section__head" style="padding-top: clamp(30px, 4vw, 60px)">
+    <div>
+      <div class="eyebrow">Из той же категории</div>
+      <h2 class="section__title">{{ .Product.CategoryTitle }}</h2>
+    </div>
+    <p class="section__note"><a href="{{ .BackURL }}" style="color:var(--accent)">Весь каталог →</a></p>
+  </div>
+  <div class="grid">
+    {{- range .Related }}
+    {{ template "card" . }}
+    {{- end }}
+  </div>
+</section>
+{{- end }}
+
+{{ template "contacts" . }}
+{{- end -}}

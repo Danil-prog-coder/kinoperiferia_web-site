@@ -1,0 +1,11 @@
+{{- define "content" -}}
+<section class="error">
+  <p class="error__code">{{ .Code }}</p>
+  <h1 class="section__title">{{ .Heading }}</h1>
+  <p class="error__text">{{ .Message }}</p>
+  <div class="hero__actions">
+    <a class="btn btn--solid" href="/catalog">В каталог</a>
+    <a class="btn btn--ghost" href="{{ .Site.Telegram }}" target="_blank" rel="noopener noreferrer">Написать в Telegram ↗</a>
+  </div>
+</section>
+{{- end -}}

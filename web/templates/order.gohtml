@@ -1,0 +1,10 @@
+{{- define "content" -}}
+<section class="section">
+  <h1 class="section__title">Опишите задачу</h1>
+  <p class="lede" style="margin-top: var(--space-4); max-width: 44ch">Оставьте контакт и коротко опишите изделие. Если нужен кастом — приложите фотографии и размеры оборудования.</p>
+
+  {{ template "order-form" .Contact }}
+</section>
+
+{{ template "contacts" . }}
+{{- end -}}
