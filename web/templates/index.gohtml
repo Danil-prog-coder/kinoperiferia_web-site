@@ -1,13 +1,8 @@
 {{- define "content" -}}
 <section id="top" class="hero">
   <div class="hero__copy">
-    <div class="eyebrow">Выпуск {{ .Year }} · изделие {{ .Hero.Art }}</div>
-    <h1 class="hero__title">
-      <span class="hero__title-line">Шьем,</span>
-      <span class="hero__title-line">чтобы</span>
-      <span class="hero__title-line hero__title-line--accent">снимать.</span>
-    </h1>
-    <p class="lede hero__text">Синесэдлы, сумки, ложементы и текстиль для света. Готовые изделия и производство под конкретный сетап.</p>
+    <p class="hero__eyebrow">{{ .Site.Tagline }}</p>
+    <h1 class="hero__title hero__title--xl">Все для СЪЕМОК</h1>
     <div class="hero__actions">
       <a class="btn btn--solid" href="#catalog">Смотреть каталог</a>
       <a class="btn btn--ghost" href="#custom">Сделать на заказ</a>
@@ -16,65 +11,104 @@
   <figure class="hero__figure">
     <div class="frame">
       {{- if .Hero.HasPhoto }}
-      <img id="hero-img" class="hero__img" src="{{ .Hero.Image }}" alt="{{ .Hero.Alt }}" width="1200" height="900" fetchpriority="high" decoding="async">
+      <img class="hero__img" src="{{ .Hero.Image }}" alt="{{ .Hero.Alt }}" width="1200" height="1500" fetchpriority="high" decoding="async">
       {{- else }}
       {{ template "photo-placeholder" .Hero }}
       {{- end }}
     </div>
-    <figcaption class="hero__caption">
-      <span>{{ .Hero.Name }} — {{ .Hero.Desc }}</span>
-      <span class="hero__price">{{ .Hero.PriceLabel }}</span>
-    </figcaption>
   </figure>
 </section>
 
-{{ template "ticker" . }}
+<section class="pitch">
+  <h2 class="pitch__title">Ваш идеальный результат — наша главная цель.</h2>
+  <p class="pitch__text">Мы делаем вещи из лучших материалов, чтобы вы пользовались ими долгие годы. Для нас нет мелочей.</p>
+  <ul class="pitch__list">
+    <li>Даём гарантию 1 год на каждый продукт</li>
+    <li>Личный подход и правки на любом этапе</li>
+  </ul>
+  <p class="pitch__closing">Мы знаем, что делаем!</p>
+</section>
 
-{{ template "catalog-section" . }}
+{{ template "catalog-teaser" . }}
 
 <section id="custom" class="custom">
-  <div class="custom__inner" data-reveal>
+  <div class="custom__inner">
     <div>
-      <div class="custom__eyebrow">Кастомное производство</div>
-      <h2 class="custom__title">Нет нужного размера? <em>Сделаем.</em></h2>
+      <h2 class="custom__title">Нет нужного размера — сошьём под ваш сетап</h2>
       <p class="custom__text">Пришлите фото, размеры и список оборудования. Согласуем конструкцию, материалы и срок напрямую с производством.</p>
       <a class="btn btn--dark" href="{{ .Site.Telegram }}" target="_blank" rel="noopener noreferrer">Обсудить изделие ↗</a>
     </div>
     <ol class="steps">
       {{- range .Site.CustomSteps }}
-      <li><span class="steps__num">{{ .Index }}</span><span class="steps__label">{{ .Title }}</span></li>
+      <li>
+        <span class="steps__num">{{ .Index }}</span>
+        <span class="steps__label">{{ .Title }}</span>
+        <span class="steps__term">{{ .Term }}</span>
+      </li>
       {{- end }}
     </ol>
   </div>
+  {{- if .Site.CustomCases }}
+  <div class="cases">
+    {{- range .Site.CustomCases }}
+    <div class="case">
+      <div class="ph" role="img" aria-label="Фотография кейса появится позже"><span class="ph__mark">КП</span><span class="ph__text">Фото скоро</span></div>
+      <p class="case__text"><span class="case__label">Просили</span> {{ .Request }}</p>
+      <p class="case__text"><span class="case__label">Сшили</span> {{ .Result }}</p>
+    </div>
+    {{- end }}
+  </div>
+  {{- end }}
 </section>
 
 <section id="about" class="section">
-  <div class="features" data-reveal>
-    {{- range .Site.Features }}
-    <div>
-      <div class="feature__index">{{ .Index }}</div>
-      <h3 class="feature__title">{{ .Title }}</h3>
-      <p class="feature__text">{{ .Text }}</p>
+  <div class="section__head">
+    <h2 class="section__title">Производство</h2>
+  </div>
+  <div class="production">
+    <div class="production__gallery">
+      <div class="ph ph--wide" role="img" aria-label="Фотография цеха появится позже"><span class="ph__mark">КП</span><span class="ph__text">Фото цеха скоро</span></div>
+      <div class="ph ph--wide" role="img" aria-label="Фотография материалов появится позже"><span class="ph__mark">КП</span><span class="ph__text">Фото материалов скоро</span></div>
     </div>
-    {{- end }}
+    <ul class="facts">
+      {{- range .Site.Features }}
+      <li><span class="facts__title">{{ .Title }}</span><span class="facts__text">{{ .Text }}</span></li>
+      {{- end }}
+    </ul>
   </div>
 </section>
 
 <section id="delivery" class="section section--flush-top">
-  <div data-reveal>
-    <div class="eyebrow">Получение заказа</div>
-    <h2 class="section__title" style="margin-bottom: clamp(30px, 3.4vw, 56px)">Москва <span class="muted-head">и вся Россия</span></h2>
-    <div class="delivery-grid">
+  <div class="section__head">
+    <h2 class="section__title">Доставка</h2>
+  </div>
+  <table class="delivery-table">
+    <thead>
+      <tr><th scope="col">Способ</th><th scope="col">Срок</th><th scope="col">Стоимость</th></tr>
+    </thead>
+    <tbody>
       {{- range .Site.Delivery }}
-      <div>
-        <div class="delivery__num">{{ .Index }}</div>
-        <h3 class="delivery__title">{{ .Title }}</h3>
-        <p class="delivery__text">{{ .Text }}</p>
-      </div>
+      <tr><td>{{ .Method }}</td><td>{{ .Term }}</td><td>{{ .Cost }}</td></tr>
       {{- end }}
+    </tbody>
+  </table>
+</section>
+
+<section id="contacts" class="section section--flush-top">
+  <div class="rule-thick"></div>
+  <div class="section__head">
+    <h2 class="section__title">Расскажите, что нужно сшить</h2>
+  </div>
+  <div class="contact-grid">
+    <div>{{ template "order-form" .Contact }}</div>
+    <div class="contact-info">
+      <div class="link-list">
+        <a href="{{ .Site.Telegram }}" target="_blank" rel="noopener noreferrer"><span>Telegram {{ .Site.TelegramTag }}</span><span>↗</span></a>
+        <a href="{{ .Site.PhoneHref }}"><span>{{ .Site.Phone }}</span><span>↗</span></a>
+        <a href="{{ .Site.EmailHref }}"><span>{{ .Site.Email }}</span><span>↗</span></a>
+      </div>
+      <p class="contact-info__text">{{ .Site.PickupAddress }}<br>{{ .Site.Hours }}</p>
     </div>
   </div>
 </section>
-
-{{ template "contacts" . }}
 {{- end -}}

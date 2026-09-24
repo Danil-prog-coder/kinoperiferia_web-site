@@ -54,11 +54,11 @@ func TestSubmitWritesJSONLAndAssignsID(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "sub", "orders.jsonl")
 	store := NewStore(path, nil, nil)
 
-	first, err := store.Submit(Order{Name: "А", Contact: "@a"})
+	first, err := store.Submit(Order{Name: "А", Contact: "@a"}, nil)
 	if err != nil {
 		t.Fatalf("заявка не принята: %v", err)
 	}
-	second, _ := store.Submit(Order{Name: "Б", Contact: "@b"})
+	second, _ := store.Submit(Order{Name: "Б", Contact: "@b"}, nil)
 
 	if first.ID == "" || first.ID == second.ID {
 		t.Errorf("идентификаторы не уникальны: %q и %q", first.ID, second.ID)
@@ -88,7 +88,7 @@ func TestSubmitRejectsInvalidWithoutWriting(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "orders.jsonl")
 	store := NewStore(path, nil, nil)
 
-	if _, err := store.Submit(Order{Name: "", Contact: ""}); err == nil {
+	if _, err := store.Submit(Order{Name: "", Contact: ""}, nil); err == nil {
 		t.Fatal("пустая заявка принята")
 	}
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
@@ -98,7 +98,7 @@ func TestSubmitRejectsInvalidWithoutWriting(t *testing.T) {
 
 type failingNotifier struct{ calls int }
 
-func (f *failingNotifier) Notify(Order) error {
+func (f *failingNotifier) Notify(Order, []UploadedFile) error {
 	f.calls++
 	return errors.New("канал недоступен")
 }
@@ -108,7 +108,7 @@ func TestSubmitKeepsOrderWhenNotifyFails(t *testing.T) {
 	n := &failingNotifier{}
 	store := NewStore(path, n, discardLogger())
 
-	order, err := store.Submit(Order{Name: "А", Contact: "@a"})
+	order, err := store.Submit(Order{Name: "А", Contact: "@a"}, nil)
 	if err != nil {
 		t.Fatalf("недоставленное уведомление отменило заявку: %v", err)
 	}
@@ -125,7 +125,7 @@ func TestSubmitKeepsOrderWhenNotifyFails(t *testing.T) {
 
 func TestNewStoreWithoutPathSkipsDisk(t *testing.T) {
 	store := NewStore("", nil, nil)
-	if _, err := store.Submit(Order{Name: "А", Contact: "@a"}); err != nil {
+	if _, err := store.Submit(Order{Name: "А", Contact: "@a"}, nil); err != nil {
 		t.Fatalf("заявка без файла не принята: %v", err)
 	}
 }
@@ -156,7 +156,7 @@ func TestTelegramNotifierSendsMessage(t *testing.T) {
 	n := NewTelegramNotifier("secret-token", "42")
 	n.APIBase = srv.URL
 
-	err := n.Notify(Order{ID: "KP-1", Name: "Дмитрий", Contact: "@d", Product: "sunhood", Message: "нужен козырёк"})
+	err := n.Notify(Order{ID: "KP-1", Name: "Дмитрий", Contact: "@d", Product: "sunhood", Message: "нужен козырёк"}, nil)
 	if err != nil {
 		t.Fatalf("отправка не удалась: %v", err)
 	}
@@ -182,7 +182,7 @@ func TestTelegramNotifierReportsAPIError(t *testing.T) {
 	n := NewTelegramNotifier("t", "1")
 	n.APIBase = srv.URL
 
-	err := n.Notify(Order{ID: "KP-1", Name: "А", Contact: "@a"})
+	err := n.Notify(Order{ID: "KP-1", Name: "А", Contact: "@a"}, nil)
 	if err == nil {
 		t.Fatal("ошибка Bot API проигнорирована")
 	}

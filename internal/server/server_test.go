@@ -2,7 +2,6 @@ package server
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -50,6 +49,7 @@ func TestRoutesReturnExpectedStatus(t *testing.T) {
 		{"/product/cinesaddle", http.StatusOK},
 		{"/product/нет-такого", http.StatusNotFound},
 		{"/order", http.StatusOK},
+		{"/privacy", http.StatusOK},
 		{"/api/products", http.StatusOK},
 		{"/api/products/sunhood", http.StatusOK},
 		{"/api/products/нет-такого", http.StatusNotFound},
@@ -67,26 +67,26 @@ func TestRoutesReturnExpectedStatus(t *testing.T) {
 	}
 }
 
-func TestIndexRendersWholeCatalogAndContacts(t *testing.T) {
+func TestIndexRendersFeaturedCatalogAndContacts(t *testing.T) {
 	body := get(t, newTestServer(t, nil), "/").Body.String()
 
 	for _, want := range []string{
-		"Шьем,", "Готовые изделия", "18 товаров",
-		`class="hero__copy"`, `class="hero__title-line"`,
+		"Все для СЪЕМОК", "Каталог", "Все 18 товаров →", "Показать больше",
+		`class="hero__copy"`,
 		"https://t.me/suvorov_dmitry", "Voros@list.ru",
 		// html/template кодирует «+» в тексте и атрибутах как &#43; — браузер
 		// разбирает его обратно, поэтому проверяем закодированный вид.
 		"915 267-02-43", `href="tel:&#43;79152670243"`, `href="mailto:Voros@list.ru"`,
-		"15 500 ₽", "от 300 ₽", catalog.PriceUnknown,
+		"Расскажите, что нужно сшить", `enctype="multipart/form-data"`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("на главной нет %q", want)
 		}
 	}
 
-	for _, p := range catalog.All() {
+	for _, p := range catalog.Featured(featuredCount) {
 		if !strings.Contains(body, p.Name) {
-			t.Errorf("на главной нет изделия %q", p.Name)
+			t.Errorf("на главной нет хита %q", p.Name)
 		}
 	}
 }
@@ -106,25 +106,23 @@ func TestCatalogFilterLimitsProducts(t *testing.T) {
 	}
 }
 
-func TestCatalogCollapsesLongListBehindButton(t *testing.T) {
+func TestCatalogShowsFullListWithoutRevealToggle(t *testing.T) {
 	s := newTestServer(t, nil)
 
 	body := get(t, s, "/catalog").Body.String()
-	if !strings.Contains(body, "Посмотреть все") {
-		t.Error("длинный список показан без кнопки раскрытия")
+	if strings.Contains(body, "Посмотреть все") {
+		t.Error("на /catalog остался переключатель «Посмотреть все» — раздел 8 ТЗ убрал его")
 	}
-	// Видны две строки по четыре карточки, остальные скрыты до нажатия.
-	if want := fmt.Sprintf("ещё %d", catalog.Count()-visibleCards); !strings.Contains(body, want) {
-		t.Errorf("в кнопке нет числа скрытых изделий (%q)", want)
+	if strings.Contains(body, `id="reveal-catalog"`) {
+		t.Error("на /catalog остался CSS-переключатель раскрытия")
 	}
-	if !strings.Contains(body, `id="reveal-catalog"`) {
-		t.Error("нет переключателя, который раскрывает каталог без JS")
+	for _, p := range catalog.All() {
+		if !strings.Contains(body, p.Name) {
+			t.Errorf("на /catalog нет изделия %q — список должен показываться целиком", p.Name)
+		}
 	}
-
-	// В короткой подборке раскрывать нечего.
-	short := get(t, s, "/catalog?cat=set").Body.String()
-	if strings.Contains(short, "Посмотреть все") {
-		t.Error("кнопка раскрытия показана для списка короче двух строк")
+	if !strings.Contains(body, `data-filter="light"`) {
+		t.Error("нет таба категории «Для света»")
 	}
 }
 
@@ -135,16 +133,23 @@ func TestCatalogUnknownFilterFallsBackToWholeCatalog(t *testing.T) {
 	}
 }
 
-func TestCatalogSortByPrice(t *testing.T) {
-	body := get(t, newTestServer(t, nil), "/catalog?sort=price-asc").Body.String()
+func TestAPIProductsSortByPrice(t *testing.T) {
+	body := get(t, newTestServer(t, nil), "/api/products?sort=price-asc").Body.String()
 
-	cheap := strings.Index(body, "Соты для Titan")
-	pricey := strings.Index(body, "Checkerboard")
-	if cheap < 0 || pricey < 0 {
-		t.Fatal("изделия не найдены в разметке")
+	var payload struct {
+		Products []productDTO `json:"products"`
 	}
-	if cheap > pricey {
-		t.Error("сортировка по возрастанию цены не применилась")
+	if err := json.Unmarshal([]byte(body), &payload); err != nil {
+		t.Fatalf("ответ не разбирается: %v", err)
+	}
+	for i := 1; i < len(payload.Products); i++ {
+		prev, cur := payload.Products[i-1].Price, payload.Products[i].Price
+		if prev == 0 {
+			continue
+		}
+		if cur != 0 && cur < prev {
+			t.Errorf("сортировка по возрастанию цены нарушена на позиции %d: %d после %d", i, cur, prev)
+		}
 	}
 }
 
@@ -191,6 +196,13 @@ func TestProductPageWithoutPhotoShowsPlaceholder(t *testing.T) {
 	}
 }
 
+func TestProductPageTelegramLinkIsPrefilled(t *testing.T) {
+	body := get(t, newTestServer(t, nil), "/product/cinesaddle").Body.String()
+	if !strings.Contains(body, "t.me/suvorov_dmitry?text=") {
+		t.Error("ссылка на Telegram не содержит предзаполненного текста")
+	}
+}
+
 func TestCanonicalAndSitemapUseBaseURL(t *testing.T) {
 	s := newTestServer(t, nil)
 
@@ -204,6 +216,9 @@ func TestCanonicalAndSitemapUseBaseURL(t *testing.T) {
 	}
 	if strings.Contains(sitemap, "cat=camera&sort") || strings.Contains(sitemap, "&cat") {
 		t.Error("в sitemap неэкранированный амперсанд")
+	}
+	if strings.Contains(sitemap, "?cat=") {
+		t.Error("в sitemap остались отфильтрованные варианты /catalog?cat=… — их canonical всегда указывает на /catalog")
 	}
 	for _, p := range catalog.All() {
 		if !strings.Contains(sitemap, "/product/"+p.Slug) {
@@ -415,6 +430,19 @@ func TestOrderUnavailableWithoutStore(t *testing.T) {
 	}
 }
 
+func TestOrderFormHasFileUploadAndConsent(t *testing.T) {
+	body := get(t, newTestServer(t, orders.NewStore("", nil, nil)), "/order").Body.String()
+	if !strings.Contains(body, `type="file"`) || !strings.Contains(body, `name="files"`) {
+		t.Error("в форме нет поля загрузки файлов")
+	}
+	if !strings.Contains(body, `name="consent"`) {
+		t.Error("в форме нет чекбокса согласия")
+	}
+	if !strings.Contains(body, `href="/privacy"`) {
+		t.Error("чекбокс согласия не ссылается на политику конфиденциальности")
+	}
+}
+
 func TestStaticAssetsAreVersionedAndCached(t *testing.T) {
 	s := newTestServer(t, nil)
 
@@ -434,18 +462,26 @@ func TestStaticAssetsAreVersionedAndCached(t *testing.T) {
 	}
 }
 
-func TestStylesKeepCompactHeroAndEightCardCatalog(t *testing.T) {
+func TestStylesReflectRedesign(t *testing.T) {
 	body := get(t, newTestServer(t, nil), "/static/css/style.css").Body.String()
 
 	for _, want := range []string{
-		`--font-display: "Prata"`,
+		`--accent: #f2c200`,
 		`grid-template-columns: repeat(4, minmax(0, 1fr))`,
-		`.reveal__toggle:not(:checked) ~ .grid > .card:nth-child(n + 9)`,
-		`linear-gradient(90deg`,
-		`margin: 0 0 0 clamp(-146px, -9.5vw, -72px)`,
+		`var(--ease)`,
+		`--fs-display: 88px`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("в стилях нет %q", want)
+		}
+	}
+
+	for _, unwanted := range []string{
+		"Prata", "Cormorant", "IBM Plex Sans Condensed",
+		"linear-gradient(90deg", "reveal__toggle", "kpEnter",
+	} {
+		if strings.Contains(body, unwanted) {
+			t.Errorf("в стилях остался старый декор %q, который должен быть убран по ТЗ", unwanted)
 		}
 	}
 }
@@ -516,7 +552,7 @@ func TestClientIPPrefersForwardedFor(t *testing.T) {
 
 func TestNoTemplateActionsLeakIntoOutput(t *testing.T) {
 	s := newTestServer(t, orders.NewStore("", nil, nil))
-	for _, path := range []string{"/", "/catalog", "/product/cinesaddle", "/order", "/нет-страницы"} {
+	for _, path := range []string{"/", "/catalog", "/product/cinesaddle", "/order", "/privacy", "/нет-страницы"} {
 		body, _ := io.ReadAll(get(t, s, path).Body)
 		if strings.Contains(string(body), "{{") || strings.Contains(string(body), "<no value>") {
 			t.Errorf("%s: в разметке остались части шаблона", path)

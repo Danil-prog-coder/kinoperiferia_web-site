@@ -50,6 +50,10 @@ type Product struct {
 	// Variants — исполнения изделия. У изделия с исполнениями цена берётся
 	// из них, поле Price остаётся нулевым.
 	Variants []Variant `json:"variants"`
+
+	// Featured отмечает изделия для витрины на главной — их достаточно для
+	// одной сетки 4×2 без обращения к /catalog.
+	Featured bool `json:"featured"`
 }
 
 // Spec — строка таблицы характеристик изделия.
@@ -90,8 +94,8 @@ func baseSpecs(extra ...Spec) []Spec {
 var products = []Product{
 	{
 		Slug: "cinesaddle", Art: "KP—01", Name: "Синесэдл", Category: "camera",
-		Kicker: "Опора",
-		Desc:   "Малый и большой, пять расцветок.",
+		Kicker: "Опора", Featured: true,
+		Desc: "Малый и большой, пять расцветок.",
 		Detail: "Опора для съёмки с рук, капота, штатива или любой неровной поверхности. " +
 			"Наполнитель не шуршит в кадре, чехол снимается для стирки, поясная фиксация " +
 			"позволяет носить седло на себе между дублями.",
@@ -132,8 +136,8 @@ var products = []Product{
 	},
 	{
 		Slug: "dozhdevik", Art: "KP—04", Name: "Дождевик для кинокамеры", Category: "camera",
-		Kicker: "Дождь и пыль",
-		Desc:   "Два размера под разный объём сетапа.",
+		Kicker: "Дождь и пыль", Featured: true,
+		Desc: "Два размера под разный объём сетапа.",
 		Detail: "Закрывает камеру на съёмке под дождём, снегом и в пыли. Два размера: малый — " +
 			"под компактную сборку, большой — когда на камере навешано больше.",
 		InStock:     true,
@@ -146,8 +150,8 @@ var products = []Product{
 	},
 	{
 		Slug: "sumka-mehanika-l", Art: "KP—05", Name: "Сумка механика, размер L", Category: "bags",
-		Kicker: "Размер L",
-		Desc:   "Три цвета, наполнение под ваш комплект.",
+		Kicker: "Размер L", Featured: true,
+		Desc: "Три цвета, наполнение под ваш комплект.",
 		Detail: "Шьём под конкретный набор инструмента и расходников. Габариты, число " +
 			"отделений и раскладку карманов согласуем до пошива — по фотографиям и размерам " +
 			"вашего комплекта.",
@@ -197,8 +201,8 @@ var products = []Product{
 	},
 	{
 		Slug: "kofr-dlya-shtativa", Art: "KP—08", Name: "Кофр для штатива", Category: "bags",
-		Kicker: "Sachtler",
-		Desc:   "Под Sachtler и под ваш штатив.",
+		Kicker: "Sachtler", Featured: true,
+		Desc: "Под Sachtler и под ваш штатив.",
 		Detail: "Кофр под штатив: готовое лекало под Sachtler, остальные модели шьём по " +
 			"размерам вашего штатива с головой.",
 		InStock:     true,
@@ -245,8 +249,8 @@ var products = []Product{
 	},
 	{
 		Slug: "soty-titan", Art: "KP—12", Name: "Соты для Titan", Category: "light",
-		Kicker: "4 размера",
-		Desc:   "120, 103, 60 и 30 см — по три исполнения в каждом.",
+		Kicker: "4 размера", Featured: true,
+		Desc: "120, 103, 60 и 30 см — по три исполнения в каждом.",
 		Detail: "Сотовые насадки для света Titan. Четыре размера — 120, 103, 60 и 30 см, " +
 			"в каждом три исполнения: Full, 1/2 и 1/4. Цена зависит от размера и исполнения, " +
 			"полная таблица — ниже.",
@@ -303,8 +307,8 @@ var products = []Product{
 	},
 	{
 		Slug: "checkerboard", Art: "KP—15", Name: "Checkerboard", Category: "light",
-		Kicker: "8×8 и 12×12",
-		Desc:   "Отражатель-шахматка, серебро или золото.",
+		Kicker: "8×8 и 12×12", Featured: true,
+		Desc: "Отражатель-шахматка, серебро или золото.",
 		Detail: "Отражатель «шахматка» на раму: даёт рассеянный отражённый свет мягче " +
 			"зеркального серебра. Два размера и две стороны — серебро и золото.",
 		InStock:     true,
@@ -326,7 +330,7 @@ var products = []Product{
 		Desc:   "Отсечка света, съёмный светонепроницаемый текстиль.",
 		Detail: "Флаг для отсечки света с юбкой: светонепроницаемый текстиль снимается с рамы, " +
 			"поэтому его удобно возить отдельно и менять при износе.",
-		Price: 15500, InStock: true,
+		Price: 15500, InStock: true, Featured: true,
 		Specs: baseSpecs(
 			Spec{Name: "Размер", Value: "120 × 120 см"},
 			Spec{Name: "Комплектация", Value: "С юбкой"},
@@ -348,8 +352,8 @@ var products = []Product{
 		Desc:   "Две ручки, два кольца и защищённая молния.",
 		Detail: "Противовес для стоек и журавлей: две ручки для переноски, два кольца для " +
 			"подвеса, молния закрыта клапаном от пыли и зацепов.",
-		InStock: true,
-		Specs:   baseSpecs(Spec{Name: "Вес", Value: "12 кг"}),
+		InStock: true, Featured: true,
+		Specs: baseSpecs(Spec{Name: "Вес", Value: "12 кг"}),
 	},
 }
 
@@ -376,6 +380,29 @@ func ByCategory(slug string) []Product {
 		}
 	}
 	return out
+}
+
+// Featured возвращает изделия для витрины на главной — те, что отмечены
+// Featured: true, в порядке каталога. Если ни одно не отмечено, возвращает
+// первые n изделий, чтобы витрина не осталась пустой.
+func Featured(n int) []Product {
+	out := make([]Product, 0, n)
+	for _, p := range products {
+		if p.Featured {
+			out = append(out, p)
+			if len(out) == n {
+				return out
+			}
+		}
+	}
+	if len(out) > 0 {
+		return out
+	}
+	all := All()
+	if len(all) > n {
+		all = all[:n]
+	}
+	return all
 }
 
 // BySlug ищет изделие по slug.

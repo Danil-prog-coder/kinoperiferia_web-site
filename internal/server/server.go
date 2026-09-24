@@ -10,6 +10,7 @@ import (
 	"html/template"
 	"io/fs"
 	"log/slog"
+	"mime/multipart"
 	"net/http"
 	"net/url"
 	"strings"
@@ -76,7 +77,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // pages перечисляет шаблоны страниц; каждый объявляет блок "content".
-var pages = []string{"index", "catalog", "product", "order", "error"}
+var pages = []string{"index", "catalog", "product", "order", "error", "privacy"}
 
 func parseTemplates(fsys fs.FS, assets assetVersions) (map[string]*template.Template, error) {
 	funcs := template.FuncMap{
@@ -102,6 +103,7 @@ func (s *Server) routes(staticFS fs.FS) {
 	s.mux.HandleFunc("GET /product/{slug}", s.handleProduct)
 	s.mux.HandleFunc("GET /order", s.handleOrderForm)
 	s.mux.HandleFunc("POST /order", s.handleOrderSubmit)
+	s.mux.HandleFunc("GET /privacy", s.handlePrivacy)
 
 	s.mux.HandleFunc("GET /api/products", s.handleAPIProducts)
 	s.mux.HandleFunc("GET /api/products/{slug}", s.handleAPIProduct)
@@ -136,73 +138,60 @@ func (s *Server) canonical(path string) string {
 
 // ── Витрина ────────────────────────────────────────────────────────────
 
-var sortTitles = []struct{ Value, Title string }{
-	{catalog.SortDefault, "По умолчанию"},
-	{catalog.SortPriceAsc, "Сначала дешевле"},
-	{catalog.SortPriceDesc, "Сначала дороже"},
-	{catalog.SortName, "По названию"},
+// featuredCount — сколько хитов показывает главная: сетка 4×2 без фильтров
+// и сортировки. Полный список — только на /catalog (раздел 6.4, 8 ТЗ).
+const featuredCount = 8
+
+// buildHomeCatalog собирает подборку хитов для главной.
+func (s *Server) buildHomeCatalog() catalogTeaser {
+	all := catalog.All()
+	return catalogTeaser{
+		Heading:    "Каталог",
+		TotalLabel: "Все " + countLabel(len(all), true) + " →",
+		MoreURL:    "/catalog",
+		Products:   catalog.Featured(featuredCount),
+	}
 }
 
-// visibleCards — сколько карточек видно до нажатия «Посмотреть все»:
-// две строки по четыре. Остальные раскрываются по кнопке.
-const visibleCards = 8
-
-// buildCatalogView собирает состояние витрины из query-параметров cat и sort.
-// Неизвестные значения молча заменяются значениями по умолчанию: ссылки на
-// каталог часто приходят извне, и падать из-за мусора в query не нужно.
-func (s *Server) buildCatalogView(r *http.Request, action, heading string) catalogView {
+// buildFullCatalog собирает состояние страницы /catalog из query-параметра
+// cat. Неизвестное значение молча заменяется пустым: ссылки на каталог часто
+// приходят извне, и падать из-за мусора в query не нужно. Сортировки на этой
+// странице больше нет — при 18 позициях она не нужна (раздел 8 ТЗ).
+func (s *Server) buildFullCatalog(r *http.Request) catalogView {
 	cat := r.URL.Query().Get("cat")
 	if cat == "all" || !catalog.IsCategory(cat) {
 		cat = ""
 	}
 
-	sortMode := r.URL.Query().Get("sort")
-	if !isKnownSort(sortMode) {
-		sortMode = catalog.SortDefault
-	}
+	list := catalog.ByCategory(cat)
 
-	list := catalog.Sort(catalog.ByCategory(cat), sortMode)
+	all := catalog.All()
+	counts := map[string]int{"all": len(all)}
+	for _, p := range all {
+		counts[p.Category]++
+	}
 
 	filters := make([]categoryFilter, 0, len(catalog.Categories))
 	for _, c := range catalog.Categories {
-		q := url.Values{}
+		href := "/catalog"
 		if c.Slug != "all" {
-			q.Set("cat", c.Slug)
-		}
-		if sortMode != catalog.SortDefault {
-			q.Set("sort", sortMode)
-		}
-		href := action
-		if len(q) > 0 {
-			href += "?" + q.Encode()
+			href += "?" + (url.Values{"cat": {c.Slug}}).Encode()
 		}
 		active := c.Slug == cat || (cat == "" && c.Slug == "all")
-		filters = append(filters, categoryFilter{Slug: c.Slug, Title: c.Title, URL: href, Active: active})
-	}
-
-	options := make([]sortOption, 0, len(sortTitles))
-	for _, o := range sortTitles {
-		options = append(options, sortOption{Value: o.Value, Title: o.Title, Selected: o.Value == sortMode})
-	}
-
-	hidden := len(list) - visibleCards
-	if hidden < 0 {
-		hidden = 0
+		filters = append(filters, categoryFilter{Slug: c.Slug, Title: c.Title, URL: href, Active: active, Count: counts[c.Slug]})
 	}
 
 	return catalogView{
-		Heading:        heading,
+		Heading:        "Каталог изделий",
 		CountLabel:     countLabel(len(list), cat == ""),
-		Action:         action,
 		ActiveCategory: cat,
 		Categories:     filters,
-		SortOptions:    options,
 		Products:       list,
-		Collapsible:    hidden > 0,
-		HiddenCount:    hidden,
 	}
 }
 
+// isKnownSort проверяет параметр sort у JSON API — в разметке страниц
+// сортировки больше нет, но API её сохраняет для внешних интеграций.
 func isKnownSort(mode string) bool {
 	switch mode {
 	case catalog.SortDefault, catalog.SortPriceAsc, catalog.SortPriceDesc, catalog.SortName:
@@ -249,7 +238,8 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 			"Синесэдлы, сумки, ложементы и текстиль для света. Собственное производство в Москве, "+
 				"пошив под конкретный сетап, гарантия 1 год."),
 		Hero:    hero,
-		Catalog: s.buildCatalogView(r, "/", "Готовые изделия"),
+		Catalog: s.buildHomeCatalog(),
+		Contact: s.contactFormBase(),
 	}
 	page.OGImage = hero.Image
 	page.JSONLD = s.organizationJSONLD()
@@ -258,7 +248,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleCatalog(w http.ResponseWriter, r *http.Request) {
-	view := s.buildCatalogView(r, "/catalog", "Каталог изделий")
+	view := s.buildFullCatalog(r)
 
 	title := "Каталог — " + site.Brand
 	desc := "Все изделия «Кинопериферии»: седла для камеры, сумки и кейсы, текстиль для света и оснастка площадки."
@@ -301,9 +291,10 @@ func (s *Server) handleProduct(w http.ResponseWriter, r *http.Request) {
 		pageBase: s.base(r, "catalog",
 			p.Name+" — "+p.PriceLabel()+" — "+site.Brand,
 			p.Detail),
-		Product: p,
-		Related: related,
-		BackURL: "/catalog?cat=" + p.Category,
+		Product:      p,
+		Related:      related,
+		BackURL:      "/catalog?cat=" + p.Category,
+		TelegramHref: telegramPrefilled(p),
 	}
 	page.OGType = "product"
 	page.OGImage = p.Image
@@ -312,14 +303,32 @@ func (s *Server) handleProduct(w http.ResponseWriter, r *http.Request) {
 	s.render(w, r, "product", http.StatusOK, page)
 }
 
+// telegramPrefilled собирает ссылку на Telegram с уже готовым текстом
+// сообщения — «Уточнить и заказать» не должно начинаться с чистого листа.
+func telegramPrefilled(p catalog.Product) string {
+	text := fmt.Sprintf("Здравствуйте! Интересует %s (%s).", p.Name, p.Art)
+	return site.Telegram + "?text=" + url.QueryEscape(text)
+}
+
 // ── Заявка ─────────────────────────────────────────────────────────────
+
+// maxOrderBody — потолок тела запроса заявки: 5 файлов по 10 МБ плюс запас
+// на текстовые поля и служебные части multipart-разметки.
+const maxOrderBody = orders.MaxFiles*orders.MaxFileSize + 1<<20
+
+func (s *Server) contactFormBase() contactForm {
+	return contactForm{
+		Site:     siteView,
+		Errors:   map[string]string{},
+		Products: catalog.All(),
+	}
+}
 
 func (s *Server) orderPageBase(r *http.Request) orderPage {
 	return orderPage{
 		pageBase: s.base(r, "order", "Заявка — "+site.Brand,
 			"Оставьте заявку на изделие «Кинопериферии»: готовую позицию из каталога или пошив под ваш сетап."),
-		Errors:   map[string]string{},
-		Products: catalog.All(),
+		Contact: s.contactFormBase(),
 	}
 }
 
@@ -327,24 +336,35 @@ func (s *Server) handleOrderForm(w http.ResponseWriter, r *http.Request) {
 	page := s.orderPageBase(r)
 	if slug := r.URL.Query().Get("product"); slug != "" {
 		if _, ok := catalog.BySlug(slug); ok {
-			page.Form.Product = slug
+			page.Contact.Form.Product = slug
 		}
 	}
 	s.render(w, r, "order", http.StatusOK, page)
 }
 
+func (s *Server) handlePrivacy(w http.ResponseWriter, r *http.Request) {
+	page := staticPage{
+		pageBase: s.base(r, "", "Политика конфиденциальности — "+site.Brand,
+			"Как «Кинопериферия» обрабатывает персональные данные, оставленные в заявке."),
+	}
+	s.render(w, r, "privacy", http.StatusOK, page)
+}
+
 func (s *Server) handleOrderSubmit(w http.ResponseWriter, r *http.Request) {
 	page := s.orderPageBase(r)
 
-	// Форма открыта всем, поэтому тело запроса ограничиваем до разбора.
-	r.Body = http.MaxBytesReader(w, r.Body, 64<<10)
-	if err := r.ParseForm(); err != nil {
-		page.Failed = true
+	// Форма может прийти как обычная (без вложений) или как multipart с
+	// файлами — ParseMultipartForm сама разбирает оба случая; тело запроса
+	// ограничиваем заранее, чтобы не читать в память лишнее.
+	r.Body = http.MaxBytesReader(w, r.Body, maxOrderBody)
+	if err := r.ParseMultipartForm(orders.MaxFileSize); err != nil && !errors.Is(err, http.ErrNotMultipart) {
+		page.Contact.Failed = true
+		page.Contact.Errors["files"] = "Файлы не загрузились — попробуйте меньшего размера или без них."
 		s.render(w, r, "order", http.StatusBadRequest, page)
 		return
 	}
 
-	page.Form = orderForm{
+	page.Contact.Form = orderForm{
 		Name:    r.PostFormValue("name"),
 		Contact: r.PostFormValue("contact"),
 		Product: r.PostFormValue("product"),
@@ -354,58 +374,79 @@ func (s *Server) handleOrderSubmit(w http.ResponseWriter, r *http.Request) {
 	// Ловушка для ботов: поле скрыто от людей, заполнить его может только робот.
 	// Отвечаем как при успехе, чтобы не подсказывать спамеру, что он отсеян.
 	if strings.TrimSpace(r.PostFormValue("company")) != "" {
-		page.Submitted = true
-		page.OrderID = "KP-0000-000"
+		page.Contact.Submitted = true
+		page.Contact.OrderID = "KP-0000-000"
 		s.render(w, r, "order", http.StatusOK, page)
 		return
 	}
 
 	if s.orders == nil {
-		page.Failed = true
+		page.Contact.Failed = true
 		s.render(w, r, "order", http.StatusServiceUnavailable, page)
 		return
 	}
 
 	if !s.limiter.allow(clientIP(r)) {
-		page.Failed = true
-		page.Errors["message"] = "Слишком много заявок подряд. Попробуйте через минуту или напишите в Telegram."
+		page.Contact.Failed = true
+		page.Contact.Errors["message"] = "Слишком много заявок подряд. Попробуйте через минуту или напишите в Telegram."
 		s.render(w, r, "order", http.StatusTooManyRequests, page)
 		return
 	}
 
 	// Изделие принимаем только из каталога: это защищает от произвольного
 	// текста в поле, которое пользователь видит как выпадающий список.
-	if page.Form.Product != "" {
-		if _, ok := catalog.BySlug(page.Form.Product); !ok {
-			page.Form.Product = ""
+	if page.Contact.Form.Product != "" {
+		if _, ok := catalog.BySlug(page.Contact.Form.Product); !ok {
+			page.Contact.Form.Product = ""
 		}
 	}
 
+	var headers []*multipart.FileHeader
+	if r.MultipartForm != nil {
+		headers = r.MultipartForm.File["files"]
+	}
+	if err := orders.ValidateFiles(headers); err != nil {
+		var verr *orders.ValidationError
+		errors.As(err, &verr)
+		page.Contact.Errors = verr.Fields
+		page.Contact.Failed = true
+		s.render(w, r, "order", http.StatusUnprocessableEntity, page)
+		return
+	}
+	files, err := orders.ReadFiles(headers)
+	if err != nil {
+		s.log.Error("не удалось прочитать вложения заявки", "err", err)
+		page.Contact.Failed = true
+		page.Contact.Errors["files"] = "Не удалось прочитать файлы, попробуйте ещё раз."
+		s.render(w, r, "order", http.StatusInternalServerError, page)
+		return
+	}
+
 	order, err := s.orders.Submit(orders.Order{
-		Name:    page.Form.Name,
-		Contact: page.Form.Contact,
-		Product: page.Form.Product,
-		Message: page.Form.Message,
-	})
+		Name:    page.Contact.Form.Name,
+		Contact: page.Contact.Form.Contact,
+		Product: page.Contact.Form.Product,
+		Message: page.Contact.Form.Message,
+	}, files)
 	if err != nil {
 		var verr *orders.ValidationError
 		if errors.As(err, &verr) {
-			page.Errors = verr.Fields
-			page.Failed = true
+			page.Contact.Errors = verr.Fields
+			page.Contact.Failed = true
 			s.render(w, r, "order", http.StatusUnprocessableEntity, page)
 			return
 		}
 		// Сохранить заявку не удалось — показываем отказ, чтобы человек написал
 		// в Telegram, а не считал, что его услышали.
 		s.log.Error("заявку не удалось принять", "err", err)
-		page.Failed = true
+		page.Contact.Failed = true
 		s.render(w, r, "order", http.StatusInternalServerError, page)
 		return
 	}
 
-	s.log.Info("новая заявка", "id", order.ID, "product", order.Product)
-	page.Submitted = true
-	page.OrderID = order.ID
+	s.log.Info("новая заявка", "id", order.ID, "product", order.Product, "files", len(order.Files))
+	page.Contact.Submitted = true
+	page.Contact.OrderID = order.ID
 	s.render(w, r, "order", http.StatusOK, page)
 }
 
@@ -453,13 +494,9 @@ func (s *Server) writeJSON(w http.ResponseWriter, status int, v any) {
 // ── Служебные маршруты ─────────────────────────────────────────────────
 
 func (s *Server) handleSitemap(w http.ResponseWriter, r *http.Request) {
-	paths := []string{"/", "/catalog", "/order"}
-	for _, c := range catalog.Categories {
-		if c.Slug == "all" {
-			continue
-		}
-		paths = append(paths, "/catalog?cat="+c.Slug)
-	}
+	// Отфильтрованные /catalog?cat=… не входят: их canonical всегда указывает
+	// на голый /catalog (раздел 8 ТЗ), отдельная индексация им не нужна.
+	paths := []string{"/", "/catalog", "/order", "/privacy"}
 	for _, p := range catalog.All() {
 		paths = append(paths, "/product/"+p.Slug)
 	}

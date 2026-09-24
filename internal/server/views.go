@@ -19,30 +19,36 @@ type siteData struct {
 	// html/template пропускает в href только http, https, mailto и
 	// относительные адреса, а схему tel: заменяет на #ZgotmplZ. Схемы здесь
 	// заданы константами в коде, поэтому помечаем их как доверенные.
-	PhoneHref   template.URL
-	Email       string
-	EmailHref   template.URL
-	Features    []site.Feature
-	Delivery    []site.DeliveryOption
-	CustomSteps []site.CustomStep
-	TickerItems []string
+	PhoneHref     template.URL
+	Email         string
+	EmailHref     template.URL
+	PickupAddress string
+	Hours         string
+	Requisites    string
+	Features      []site.Feature
+	Delivery      []site.DeliveryOption
+	CustomSteps   []site.CustomStep
+	CustomCases   []site.CustomCase
 }
 
 var siteView = siteData{
-	Brand:       site.Brand,
-	Tagline:     site.Tagline,
-	City:        site.City,
-	Warranty:    site.Warranty,
-	Telegram:    site.Telegram,
-	TelegramTag: site.TelegramTag,
-	Phone:       site.Phone,
-	PhoneHref:   template.URL(site.PhoneHref),
-	Email:       site.Email,
-	EmailHref:   template.URL(site.EmailHref),
-	Features:    site.Features,
-	Delivery:    site.Delivery,
-	CustomSteps: site.CustomSteps,
-	TickerItems: site.TickerItems,
+	Brand:         site.Brand,
+	Tagline:       site.Tagline,
+	City:          site.City,
+	Warranty:      site.Warranty,
+	Telegram:      site.Telegram,
+	TelegramTag:   site.TelegramTag,
+	Phone:         site.Phone,
+	PhoneHref:     template.URL(site.PhoneHref),
+	Email:         site.Email,
+	EmailHref:     template.URL(site.EmailHref),
+	PickupAddress: site.PickupAddress,
+	Hours:         site.Hours,
+	Requisites:    site.Requisites,
+	Features:      site.Features,
+	Delivery:      site.Delivery,
+	CustomSteps:   site.CustomSteps,
+	CustomCases:   site.CustomCases,
 }
 
 // pageBase — общие для всех страниц данные: мета-теги, навигация, контакты.
@@ -58,41 +64,42 @@ type pageBase struct {
 	Site        siteData
 }
 
-// categoryFilter — чип фильтра каталога.
+// categoryFilter — таб фильтра каталога на странице /catalog, со счётчиком
+// изделий в категории.
 type categoryFilter struct {
 	Slug   string
 	Title  string
 	URL    string
 	Active bool
+	Count  int
 }
 
-// sortOption — пункт выпадающего списка сортировки.
-type sortOption struct {
-	Value    string
-	Title    string
-	Selected bool
-}
-
-// catalogView — состояние витрины: активный фильтр, сортировка и список изделий.
+// catalogView — полная витрина страницы /catalog: активный фильтр и список
+// изделий. Сортировки и сворачивания больше нет — раздел 8 ТЗ убрал их как
+// не нужные при 18 позициях.
 type catalogView struct {
 	Heading        string
 	CountLabel     string
-	Action         string
 	ActiveCategory string
 	Categories     []categoryFilter
-	SortOptions    []sortOption
 	Products       []catalog.Product
-	// Collapsible — изделий больше, чем помещается в две строки: витрина
-	// показывает первые и кнопку «Посмотреть все».
-	Collapsible bool
-	HiddenCount int
+}
+
+// catalogTeaser — подборка хитов на главной: без фильтров и сортировки,
+// с одной ссылкой на полный каталог.
+type catalogTeaser struct {
+	Heading    string
+	TotalLabel string
+	MoreURL    string
+	Products   []catalog.Product
 }
 
 // indexPage — главная страница.
 type indexPage struct {
 	pageBase
 	Hero    catalog.Product
-	Catalog catalogView
+	Catalog catalogTeaser
+	Contact contactForm
 }
 
 // catalogPage — отдельная страница каталога.
@@ -104,9 +111,10 @@ type catalogPage struct {
 // productPage — страница изделия.
 type productPage struct {
 	pageBase
-	Product catalog.Product
-	Related []catalog.Product
-	BackURL string
+	Product      catalog.Product
+	Related      []catalog.Product
+	BackURL      string
+	TelegramHref string
 }
 
 // orderForm — значения полей формы заявки, которые возвращаются пользователю
@@ -118,9 +126,12 @@ type orderForm struct {
 	Message string
 }
 
-// orderPage — страница заявки.
-type orderPage struct {
-	pageBase
+// contactForm — состояние формы заявки: используется и на отдельной
+// странице /order, и как встроенный блок в конце главной (раздел 6.8 ТЗ).
+// Несёт свою копию Site, чтобы общий шаблон формы не зависел от того, что
+// именно сейчас исполняется как корень шаблона.
+type contactForm struct {
+	Site      siteData
 	Form      orderForm
 	Errors    map[string]string
 	Products  []catalog.Product
@@ -129,12 +140,23 @@ type orderPage struct {
 	OrderID   string
 }
 
+// orderPage — страница заявки.
+type orderPage struct {
+	pageBase
+	Contact contactForm
+}
+
 // errorPage — страница ошибки (404, 500).
 type errorPage struct {
 	pageBase
 	Code    int
 	Heading string
 	Message string
+}
+
+// staticPage — страница со статичным текстом (политика конфиденциальности).
+type staticPage struct {
+	pageBase
 }
 
 // productDTO — представление изделия в JSON API. Включает готовые к выводу

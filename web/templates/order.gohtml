@@ -1,67 +1,9 @@
 {{- define "content" -}}
 <section class="section">
-  <div class="eyebrow">Заявка на изделие</div>
   <h1 class="section__title">Опишите задачу</h1>
+  <p class="lede" style="margin-top: var(--space-4); max-width: 44ch">Оставьте контакт и коротко опишите изделие. Если нужен кастом — приложите фотографии и размеры оборудования.</p>
 
-  {{- if .Submitted }}
-  <div class="notice" style="margin-top: var(--space-6); max-width: 560px">
-    Заявка принята. Свяжемся по указанному контакту — обычно в течение рабочего дня.
-    <span class="notice__id">Номер заявки: {{ .OrderID }}</span>
-  </div>
-  <div class="hero__actions">
-    <a class="btn btn--solid" href="{{ .Site.Telegram }}" target="_blank" rel="noopener noreferrer">Написать в Telegram ↗</a>
-    <a class="btn btn--ghost" href="/catalog">Вернуться в каталог</a>
-  </div>
-  {{- else }}
-  <p class="lede" style="margin-top: var(--space-4); max-width: 44ch">Оставьте контакт и коротко опишите изделие. Если нужен кастом — приложите в Telegram фотографии и размеры оборудования.</p>
-
-  {{- if .Failed }}
-  <div class="notice" style="margin-top: var(--space-6); max-width: 560px; border-left-color: #ff8f6b">
-    Заявку не удалось отправить. Проверьте поля ниже или напишите напрямую в <a href="{{ .Site.Telegram }}" target="_blank" rel="noopener noreferrer" style="color:var(--yellow)">Telegram</a>.
-  </div>
-  {{- end }}
-
-  <form class="form" method="post" action="/order" novalidate>
-    <div class="field{{ if index .Errors "name" }} field--invalid{{ end }}">
-      <label for="name">Как к вам обращаться</label>
-      <input id="name" name="name" type="text" maxlength="100" required autocomplete="name" value="{{ .Form.Name }}">
-      {{- with index .Errors "name" }}<span class="field__error">{{ . }}</span>{{ end }}
-    </div>
-
-    <div class="field{{ if index .Errors "contact" }} field--invalid{{ end }}">
-      <label for="contact">Telegram, телефон или почта</label>
-      <input id="contact" name="contact" type="text" maxlength="120" required value="{{ .Form.Contact }}">
-      {{- with index .Errors "contact" }}<span class="field__error">{{ . }}</span>{{ end }}
-    </div>
-
-    <div class="field">
-      <label for="product">Изделие</label>
-      <select id="product" name="product">
-        <option value="">Кастомное изделие / не выбрано</option>
-        {{- range .Products }}
-        <option value="{{ .Slug }}"{{ if eq .Slug $.Form.Product }} selected{{ end }}>{{ .Art }} · {{ .Name }} — {{ .PriceLabel }}</option>
-        {{- end }}
-      </select>
-    </div>
-
-    <div class="field{{ if index .Errors "message" }} field--invalid{{ end }}">
-      <label for="message">Что нужно сшить</label>
-      <textarea id="message" name="message" maxlength="2000" placeholder="Размеры, оборудование, сроки">{{ .Form.Message }}</textarea>
-      {{- with index .Errors "message" }}<span class="field__error">{{ . }}</span>{{ end }}
-    </div>
-
-    <div class="honey" aria-hidden="true">
-      <label for="company">Не заполняйте это поле</label>
-      <input id="company" name="company" type="text" tabindex="-1" autocomplete="off">
-    </div>
-
-    <div class="hero__actions" style="margin-top: 0">
-      <button class="btn btn--solid" type="submit">Отправить заявку</button>
-      <a class="btn btn--ghost" href="{{ .Site.Telegram }}" target="_blank" rel="noopener noreferrer">Написать в Telegram ↗</a>
-    </div>
-    <p class="form__hint">Отправляя форму, вы соглашаетесь на обработку указанных контактных данных для ответа на заявку.</p>
-  </form>
-  {{- end }}
+  {{ template "order-form" .Contact }}
 </section>
 
 {{ template "contacts" . }}

@@ -3,15 +3,19 @@
 package main
 
 import (
+	"compress/gzip"
 	"context"
 	"embed"
 	"errors"
+	"io"
 	"io/fs"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -74,7 +78,7 @@ func run(log *slog.Logger) error {
 	addr := ":" + env("PORT", "8080")
 	srv := &http.Server{
 		Addr:              addr,
-		Handler:           logRequests(log, app),
+		Handler:           logRequests(log, gzipMiddleware(log, app)),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second,
 		WriteTimeout:      30 * time.Second,
@@ -121,6 +125,73 @@ type statusRecorder struct {
 func (r *statusRecorder) WriteHeader(code int) {
 	r.status = code
 	r.ResponseWriter.WriteHeader(code)
+}
+
+// gzipMiddleware сжимает текстовые ответы (HTML/CSS/JS/JSON/XML), когда
+// клиент это поддерживает. Статика уже версионирована и закэширована
+// (assets.go), но не сжата — этот слой закрывает и её, и HTML-страницы.
+func gzipMiddleware(log *slog.Logger, next http.Handler) http.Handler {
+	pool := sync.Pool{New: func() any { return gzip.NewWriter(io.Discard) }}
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") || r.Header.Get("Range") != "" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		gz := pool.Get().(*gzip.Writer)
+		gz.Reset(w)
+		defer func() {
+			if err := gz.Close(); err != nil {
+				log.Debug("не удалось закрыть gzip-writer", "err", err)
+			}
+			pool.Put(gz)
+		}()
+
+		gzw := &gzipResponseWriter{ResponseWriter: w, gz: gz}
+		next.ServeHTTP(gzw, r)
+	})
+}
+
+// gzipResponseWriter включает сжатие только для текстовых типов и только
+// после того, как обработчик определил Content-Type — иначе можно сжать
+// уже закодированный ответ (например, изображение) или ответ без тела.
+type gzipResponseWriter struct {
+	http.ResponseWriter
+	gz          *gzip.Writer
+	wroteHeader bool
+	compress    bool
+}
+
+func (w *gzipResponseWriter) WriteHeader(status int) {
+	if !w.wroteHeader {
+		w.wroteHeader = true
+		if isCompressible(w.Header().Get("Content-Type")) {
+			w.compress = true
+			w.Header().Set("Content-Encoding", "gzip")
+			w.Header().Add("Vary", "Accept-Encoding")
+			w.Header().Del("Content-Length")
+		}
+	}
+	w.ResponseWriter.WriteHeader(status)
+}
+
+func (w *gzipResponseWriter) Write(b []byte) (int, error) {
+	if !w.wroteHeader {
+		w.WriteHeader(http.StatusOK)
+	}
+	if w.compress {
+		return w.gz.Write(b)
+	}
+	return w.ResponseWriter.Write(b)
+}
+
+func isCompressible(contentType string) bool {
+	for _, prefix := range []string{"text/", "application/json", "application/xml", "application/javascript", "image/svg+xml"} {
+		if strings.HasPrefix(contentType, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 func logRequests(log *slog.Logger, next http.Handler) http.Handler {

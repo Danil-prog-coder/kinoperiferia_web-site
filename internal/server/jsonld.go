@@ -58,18 +58,18 @@ func (s *Server) productJSONLD(p catalog.Product) template.JS {
 
 	// Цены может не быть ни у одного исполнения — тогда блока offers нет:
 	// предложение без цены разметке Schema.org не нужно.
-	if min := p.MinPrice(); min > 0 {
+	if minPrice := p.MinPrice(); minPrice > 0 {
 		availability := "https://schema.org/InStock"
 		if !p.InStock {
 			availability = "https://schema.org/OutOfStock"
 		}
 		url := s.canonical("/product/" + p.Slug)
 
-		if max := p.MaxPrice(); max > min {
+		if maxPrice := p.MaxPrice(); maxPrice > minPrice {
 			data["offers"] = map[string]any{
 				"@type":         "AggregateOffer",
-				"lowPrice":      min,
-				"highPrice":     max,
+				"lowPrice":      minPrice,
+				"highPrice":     maxPrice,
 				"offerCount":    p.PricedVariants(),
 				"priceCurrency": "RUB",
 				"availability":  availability,
@@ -78,7 +78,7 @@ func (s *Server) productJSONLD(p catalog.Product) template.JS {
 		} else {
 			data["offers"] = map[string]any{
 				"@type":         "Offer",
-				"price":         min,
+				"price":         minPrice,
 				"priceCurrency": "RUB",
 				"availability":  availability,
 				"url":           url,

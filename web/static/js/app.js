@@ -1,14 +1,77 @@
 /* Кинопериферия — прогрессивное улучшение.
-   Без JS сайт полностью работоспособен: фильтры и сортировка — обычные ссылки
-   и форма с submit, карточка изделия — отдельная страница. Этот файл добавляет
-   фильтрацию без перезагрузки, быстрый просмотр в оверлее, параллакс и появление
-   блоков при прокрутке. */
+   Без JS сайт полностью работоспособен: фильтры каталога — обычные ссылки,
+   форма заявки — обычный submit, карточка изделия — отдельная страница.
+   Этот файл добавляет фильтрацию без перезагрузки, быстрый просмотр в
+   боковой панели, шапку со scroll-spy и мобильное меню. Раздел 7 ТЗ убрал
+   декоративную анимацию: здесь нет ни появления блоков при скролле, ни
+   параллакса — только отклик на действия пользователя. */
 (function () {
   'use strict';
 
   var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  /* ── Сортировка: отправляем форму сразу при выборе ────────────────── */
+  /* ── Шапка: фон и линия при скролле ────────────────────────────────── */
+  var header = document.querySelector('[data-header]');
+  if (header) {
+    var syncHeader = function () {
+      if (window.scrollY > 4) header.setAttribute('data-scrolled', '');
+      else header.removeAttribute('data-scrolled');
+    };
+    syncHeader();
+    window.addEventListener('scroll', syncHeader, { passive: true });
+  }
+
+  /* ── Мобильное меню ────────────────────────────────────────────────── */
+  var menuToggle = document.querySelector('[data-menu-toggle]');
+  var mobileMenu = document.querySelector('[data-mobile-menu]');
+  if (menuToggle && mobileMenu) {
+    var closeMenu = function () {
+      mobileMenu.hidden = true;
+      menuToggle.setAttribute('aria-expanded', 'false');
+      document.body.style.overflow = '';
+    };
+    menuToggle.addEventListener('click', function () {
+      var open = mobileMenu.hidden;
+      mobileMenu.hidden = !open;
+      menuToggle.setAttribute('aria-expanded', String(open));
+      document.body.style.overflow = open ? 'hidden' : '';
+    });
+    mobileMenu.addEventListener('click', function (e) {
+      if (e.target.closest('a')) closeMenu();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && !mobileMenu.hidden) closeMenu();
+    });
+  }
+
+  /* ── Scroll-spy: подсветка активного пункта меню ──────────────────── */
+  var spyNav = document.querySelector('[data-scroll-spy]');
+  if (spyNav && 'IntersectionObserver' in window) {
+    var spyLinks = Array.prototype.slice.call(spyNav.querySelectorAll('a[href^="/#"], a[href^="#"]'));
+    var sections = spyLinks
+      .map(function (a) {
+        var id = a.getAttribute('href').split('#')[1];
+        return { link: a, section: id ? document.getElementById(id) : null };
+      })
+      .filter(function (x) { return x.section; });
+
+    if (sections.length) {
+      var spy = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          var match = sections.filter(function (x) { return x.section === entry.target; })[0];
+          if (!match) return;
+          if (entry.isIntersecting) {
+            spyLinks.forEach(function (a) { a.classList.remove('is-active'); });
+            match.link.classList.add('is-active');
+          }
+        });
+      }, { rootMargin: '-40% 0px -55% 0px' });
+
+      sections.forEach(function (x) { spy.observe(x.section); });
+    }
+  }
+
+  /* ── Сортировка: отправляем форму сразу при выборе (JSON API/легаси) ─ */
   var sortSelect = document.getElementById('sort');
   if (sortSelect && sortSelect.form) {
     sortSelect.addEventListener('change', function () {
@@ -28,62 +91,47 @@
       })
       .then(function (html) {
         var doc = new DOMParser().parseFromString(html, 'text/html');
-        // Меняем блок целиком: вместе с сеткой обновляются переключатель
-        // «Посмотреть все» и число скрытых карточек.
         var fresh = doc.querySelector('[data-catalog-body]');
         var current = document.querySelector('[data-catalog-body]');
         if (!fresh || !current) throw new Error('нет сетки каталога');
         current.replaceWith(fresh);
         grid = fresh.querySelector('#catalog-grid');
 
-        var counter = doc.querySelector('#catalog .eyebrow');
-        var liveCounter = document.querySelector('#catalog .eyebrow');
+        var freshTabs = doc.querySelector('[data-catalog-tabs]');
+        var liveTabs = document.querySelector('[data-catalog-tabs]');
+        if (freshTabs && liveTabs) liveTabs.replaceWith(freshTabs);
+
+        var counter = doc.querySelector('#catalog .section__note');
+        var liveCounter = document.querySelector('#catalog .section__note');
         if (counter && liveCounter) liveCounter.textContent = counter.textContent;
 
         if (push) history.pushState({ catalog: url }, '', url);
+        bindFilters();
       });
   }
 
-  filters.forEach(function (link) {
-    link.addEventListener('click', function (e) {
-      if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
-      if (!('fetch' in window) || !('DOMParser' in window)) return;
-      e.preventDefault();
-
-      filters.forEach(function (other) { other.removeAttribute('aria-current'); });
-      link.setAttribute('aria-current', 'true');
-
-      var hidden = document.querySelector('.sort input[name="cat"]');
-      var slug = link.getAttribute('data-filter');
-      if (hidden) {
-        if (slug === 'all') hidden.remove();
-        else hidden.value = slug;
-      } else if (slug !== 'all') {
-        var form = document.querySelector('[data-catalog-form]');
-        if (form) {
-          var input = document.createElement('input');
-          input.type = 'hidden';
-          input.name = 'cat';
-          input.value = slug;
-          form.querySelector('.sort').appendChild(input);
-        }
-      }
-
-      swapCatalog(link.href, true).catch(function () {
-        window.location.href = link.href;
+  function bindFilters() {
+    filters = Array.prototype.slice.call(document.querySelectorAll('[data-filter]'));
+    filters.forEach(function (link) {
+      link.addEventListener('click', function (e) {
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+        if (!('fetch' in window) || !('DOMParser' in window)) return;
+        e.preventDefault();
+        swapCatalog(link.href, true).catch(function () {
+          window.location.href = link.href;
+        });
       });
     });
-  });
+  }
+  bindFilters();
 
-  /* ── Быстрый просмотр изделия ─────────────────────────────────────── */
+  /* ── Быстрый просмотр изделия (боковая панель) ────────────────────── */
   var overlay = document.getElementById('quick-view');
   var lastFocus = null;
   var quickViewOpen = false;
 
   /* Фотография карточки и фотография в быстром просмотре получают на время
-     перехода одно имя — браузер сам переводит одну в другую. Имя должно быть
-     в документе ровно одно, поэтому у карточки его забираем в тот же момент,
-     когда отдаём оверлею. */
+     перехода одно имя — браузер сам переводит одну в другую. */
   var MEDIA_NAME = 'kp-media';
   var activeMedia = null;
 
@@ -93,25 +141,17 @@
       document.visibilityState === 'visible';
   }
 
-  // Заглушка повторяет интерфейс startViewTransition: код вызова один и тот же
-  // и там, где переходов нет.
   function morph(update) {
     if (!morphSupported()) {
       update();
       return { finished: Promise.resolve(), updateCallbackDone: Promise.resolve() };
     }
-
     var transition = document.startViewTransition(update);
-
-    // Пока вкладка не перерисовывается, браузер откладывает переход, а вместе
-    // с ним и саму подмену разметки. Страховка: если за треть секунды кадр не
-    // случился, показываем результат без анимации.
     var guard = window.setTimeout(function () {
       if (typeof transition.skipTransition === 'function') transition.skipTransition();
     }, 350);
     var clearGuard = function () { window.clearTimeout(guard); };
     transition.updateCallbackDone.then(clearGuard, clearGuard);
-
     return transition;
   }
 
@@ -120,26 +160,29 @@
     activeMedia = null;
   }
 
-  function moneyRow(p) {
-    var old = p.oldPriceLabel ? '<span class="product__old">' + esc(p.oldPriceLabel) + '</span>' : '';
-    return '<div class="product__price-row"><span class="product__price">' +
-      esc(p.priceLabel) + '</span>' + old + '</div>';
-  }
-
   function esc(s) {
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
-  /* Фотографии у части изделий ещё нет — вместо неё та же плашка, что и на
-     витрине, чтобы быстрый просмотр не открывался с битой картинкой. */
   function media(p) {
     if (p.hasPhoto) {
       return '<img class="product__img" src="' + esc(p.image) + '" alt="' + esc(p.alt) + '">';
     }
     return '<div class="ph" role="img" aria-label="Фотография изделия «' + esc(p.name) + '» появится позже">' +
       '<span class="ph__mark">КП</span><span class="ph__text">Фото скоро</span></div>';
+  }
+
+  /* Текст сообщения в Telegram: название, артикул и, если выбрано —
+     параметры исполнения. Одна и та же логика для дефолтной ссылки и для
+     клика по строке таблицы исполнений. */
+  function telegramHref(p, variant) {
+    var text = 'Здравствуйте! Интересует ' + p.name + ' (' + p.art + ').';
+    if (variant && p.optionNames && p.optionNames.length) {
+      text += ' ' + p.optionNames.join('/') + ': ' + variant.values.join('/') + '.';
+    }
+    return p.telegram + '?text=' + encodeURIComponent(text);
   }
 
   function variantsTable(p) {
@@ -150,16 +193,16 @@
       return '<th scope="col">' + esc(name) + '</th>';
     }).join('') + '<th scope="col" class="variants__price">Цена</th>';
 
-    var rows = variants.map(function (v) {
+    var rows = variants.map(function (v, i) {
       var cells = (v.values || []).map(function (value) {
         return '<td>' + esc(value) + '</td>';
       }).join('');
       var cls = 'variants__price' + (v.price ? '' : ' variants__price--unknown');
-      return '<tr>' + cells + '<td class="' + cls + '">' + esc(v.priceLabel) + '</td></tr>';
+      return '<tr data-variant="' + i + '">' + cells + '<td class="' + cls + '">' + esc(v.priceLabel) + '</td></tr>';
     }).join('');
 
     return '<table class="variants">' +
-      '<caption class="variants__caption">Исполнения и цены</caption>' +
+      '<caption class="variants__caption">Исполнения и цены — нажмите строку, чтобы выбрать</caption>' +
       '<thead><tr>' + head + '</tr></thead>' +
       '<tbody>' + rows + '</tbody></table>';
   }
@@ -184,16 +227,31 @@
           '<div class="eyebrow product__tag">' + esc(p.tag) + '</div>' +
           '<h2 class="product__name">' + esc(p.name) + '</h2>' +
           '<p class="product__desc">' + esc(p.detail) + '</p>' +
-          moneyRow(p) +
+          '<div class="product__price-row"><span class="product__price" data-price>' + esc(p.priceLabel) +
+            '</span>' + (p.oldPriceLabel ? '<span class="product__old">' + esc(p.oldPriceLabel) + '</span>' : '') + '</div>' +
           variantsTable(p) +
           '<dl class="specs">' + specs + '</dl>' +
           '<div class="product__actions">' +
-            '<a class="btn btn--solid" href="' + esc(p.telegram) + '" target="_blank" rel="noopener noreferrer">Уточнить наличие и заказать ↗</a>' +
+            '<a class="btn btn--solid" data-telegram-cta href="' + esc(telegramHref(p)) + '" target="_blank" rel="noopener noreferrer">Уточнить наличие и заказать ↗</a>' +
             '<a class="btn btn--ghost" href="/order?product=' + encodeURIComponent(p.slug) + '">Оставить заявку</a>' +
             '<a class="btn btn--ghost" href="/product/' + encodeURIComponent(p.slug) + '">Открыть страницу</a>' +
           '</div>' +
         '</div>' +
       '</div>';
+
+    var cta = overlay.querySelector('[data-telegram-cta]');
+    var priceEl = overlay.querySelector('[data-price]');
+    overlay.querySelectorAll('.variants tbody tr').forEach(function (row) {
+      row.addEventListener('click', function () {
+        var idx = Number(row.getAttribute('data-variant'));
+        var variant = (p.variants || [])[idx];
+        if (!variant) return;
+        overlay.querySelectorAll('.variants tbody tr').forEach(function (r) { r.classList.remove('is-selected'); });
+        row.classList.add('is-selected');
+        if (cta) cta.href = telegramHref(p, variant);
+        if (priceEl) priceEl.textContent = variant.priceLabel;
+      });
+    });
   }
 
   function openQuickView(card, slug, href) {
@@ -219,14 +277,12 @@
           quickViewOpen = true;
           overlay.hidden = false;
           overlay.removeAttribute('aria-hidden');
-          overlay.classList.remove('overlay--closing');
           overlay.scrollTop = 0;
           document.body.style.overflow = 'hidden';
         });
 
         history.pushState({ quickView: slug }, '', href);
 
-        // Фокус переносим после того, как разметка оверлея оказалась в DOM.
         return transition.updateCallbackDone.then(function () {
           var close = overlay.querySelector('[data-close]');
           if (close) close.focus();
@@ -238,12 +294,9 @@
     overlay.hidden = true;
     overlay.setAttribute('aria-hidden', 'true');
     overlay.innerHTML = '';
-    overlay.classList.remove('overlay--closing');
   }
 
   function closeQuickView(pop) {
-    // Флаг снимаем сразу: скрытие идёт по таймеру ради анимации, а popstate
-    // прилетает раньше — без флага оверлей закрывался бы дважды.
     if (!quickViewOpen) return;
     quickViewOpen = false;
     document.body.style.overflow = '';
@@ -257,8 +310,7 @@
       });
       transition.finished.then(releaseMedia, releaseMedia);
     } else {
-      overlay.classList.add('overlay--closing');
-      window.setTimeout(hideOverlay, reduced ? 0 : 250);
+      hideOverlay();
       releaseMedia();
     }
 
@@ -294,8 +346,6 @@
         closeQuickView(true);
         return;
       }
-      // Возврат к предыдущему фильтру: у первой записи истории state пустой,
-      // поэтому ориентируемся на текущий адрес, а не на сохранённое состояние.
       if (document.getElementById('catalog-grid')) {
         swapCatalog(window.location.href, false).catch(function () {
           window.location.reload();
@@ -304,44 +354,15 @@
     });
   }
 
-  /* ── Параллакс главного изображения ───────────────────────────────── */
-  var hero = document.getElementById('hero-img');
-  if (hero && !reduced) {
-    var pointerY = 0;
-    var smoothed = 0;
-    var frame = 0;
-
-    window.addEventListener('pointermove', function (e) {
-      pointerY = (e.clientY / window.innerHeight) * 2 - 1;
-    }, { passive: true });
-
-    var step = function () {
-      frame = requestAnimationFrame(step);
-      smoothed += (pointerY - smoothed) * 0.06;
-      var box = hero.parentNode.getBoundingClientRect();
-      if (box.bottom < 0 || box.top > window.innerHeight) return;
-      var out = Math.max(-1, Math.min(1, (window.innerHeight / 2 - (box.top + box.height / 2)) / window.innerHeight));
-      hero.style.transform = 'translate3d(0,' + (smoothed * -10 + out * 26) + 'px,0) scale(' + (1.06 + Math.abs(out) * 0.04) + ')';
-    };
-    frame = requestAnimationFrame(step);
-  }
-
-  /* ── Появление блоков при прокрутке ───────────────────────────────── */
-  var revealables = Array.prototype.slice.call(document.querySelectorAll('[data-reveal]'));
-  if (revealables.length && !reduced && 'IntersectionObserver' in window) {
-    var io = new IntersectionObserver(function (entries) {
-      entries.forEach(function (entry) {
-        if (!entry.isIntersecting) return;
-        entry.target.classList.remove('is-hidden');
-        io.unobserve(entry.target);
-      });
-    }, { threshold: 0.1 });
-
-    revealables.forEach(function (node) {
-      if (node.getBoundingClientRect().top > window.innerHeight * 0.92) {
-        node.classList.add('is-hidden');
-      }
-      io.observe(node);
+  /* ── Форма заявки: состояние отправки ─────────────────────────────── */
+  var orderForm = document.querySelector('[data-order-form]');
+  if (orderForm) {
+    orderForm.addEventListener('submit', function () {
+      var btn = orderForm.querySelector('[data-submit-btn]');
+      if (!btn) return;
+      btn.disabled = true;
+      var busy = btn.getAttribute('data-busy-text');
+      if (busy) btn.textContent = busy;
     });
   }
 })();
