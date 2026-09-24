@@ -1,5 +1,5 @@
-/* Кинопериферия — газетная («broadsheet») система: тёмная бумага, одна
-   технологическая жёлтая краска, крупные засечные заголовки.
+/* Кинопериферия — рабочая афиша киносъёмочного цеха: тёмная ткань, одна
+   технологическая жёлтая краска, крупные засечные фразы и узкая маркировка.
    Значения токенов взяты из макета и являются источником правды для вёрстки. */
 
 :root {
@@ -17,7 +17,10 @@
   --n800: #444141;
   --n900: #2d2b2b;
 
-  --font: "Source Serif 4", "Times New Roman", serif;
+  --font-display: "Prata", Georgia, serif;
+  --font-accent: "Cormorant Infant", "Times New Roman", serif;
+  --font-body: "IBM Plex Sans Condensed", "Arial Narrow", Arial, sans-serif;
+  --font-utility: "IBM Plex Mono", Consolas, monospace;
 
   --space-1: 5px;
   --space-2: 10px;
@@ -25,6 +28,8 @@
   --space-4: 20px;
   --space-6: 30px;
   --space-8: 40px;
+  --space-10: 52px;
+  --space-12: 68px;
 
   --radius-sm: 1px;
   --radius-md: 2px;
@@ -49,17 +54,26 @@ body {
 }
 
 body {
-  font-family: var(--font);
+  font-family: var(--font-body);
   color: var(--n100);
-  font-size: 16px;
-  line-height: 1.5;
+  font-size: 17px;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   overflow-x: clip;
 }
 
-h1, h2, h3, h4 {
-  font-family: var(--font);
-  letter-spacing: -0.03em;
+h1, h2 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  /* Prata уже плотно набрана: сильный отрицательный трекинг склеивает
+     буквы, а низкий интерлиньяж накладывает строки друг на друга. */
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+
+h3, h4 {
+  font-family: var(--font-body);
+  letter-spacing: -0.01em;
   text-wrap: balance;
 }
 
@@ -121,8 +135,9 @@ a:hover { color: var(--yellow); }
 }
 
 .eyebrow {
-  font-size: 13px;
-  letter-spacing: .16em;
+  font-family: var(--font-utility);
+  font-size: 12px;
+  letter-spacing: .1em;
   text-transform: uppercase;
   color: var(--yellow);
 }
@@ -130,15 +145,17 @@ a:hover { color: var(--yellow); }
 .eyebrow--muted { color: var(--n500); }
 
 .meta {
+  font-family: var(--font-utility);
   font-size: 12px;
-  letter-spacing: .12em;
+  letter-spacing: .08em;
   text-transform: uppercase;
   color: var(--n500);
 }
 
 .italic-accent {
+  font-family: var(--font-accent);
   font-style: italic;
-  font-weight: 400;
+  font-weight: 500;
   color: var(--yellow);
 }
 
@@ -165,9 +182,11 @@ a:hover { color: var(--yellow); }
 .btn {
   display: inline-block;
   padding: 14px 26px;
-  font-family: var(--font);
-  font-size: 17px;
-  font-weight: 600;
+  font-family: var(--font-utility);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: .04em;
+  text-transform: uppercase;
   white-space: nowrap;
   border: 1px solid transparent;
   border-radius: var(--radius-md);
@@ -224,8 +243,9 @@ a:hover { color: var(--yellow); }
   justify-content: space-between;
   gap: var(--space-3);
   padding-bottom: var(--space-2);
-  font-size: 12px;
-  letter-spacing: .14em;
+  font-family: var(--font-utility);
+  font-size: 11px;
+  letter-spacing: .08em;
   text-transform: uppercase;
   color: var(--n500);
 }
@@ -240,8 +260,9 @@ a:hover { color: var(--yellow); }
 }
 
 .logo {
+  font-family: var(--font-display);
   font-size: clamp(30px, 4.6vw, 62px);
-  font-weight: 700;
+  font-weight: 400;
   line-height: 1;
   letter-spacing: -0.03em;
 }
@@ -257,7 +278,9 @@ a:hover { color: var(--yellow); }
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-4);
-  font-size: 16px;
+  font-family: var(--font-utility);
+  font-size: 13px;
+  letter-spacing: .02em;
   color: var(--n300);
 }
 
@@ -269,33 +292,59 @@ a:hover { color: var(--yellow); }
 
 .hero {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: clamp(30px, 4vw, 70px);
-  align-items: end;
-  padding: clamp(30px, 5vw, 70px) var(--gutter) clamp(40px, 6vw, 90px);
+  /* Текстовая колонка уже фотографии: заголовок из коротких строк
+     иначе оставляет справа пустое поле. */
+  grid-template-columns: minmax(0, .88fr) minmax(0, 1.12fr);
+  gap: 0;
+  align-items: start;
+  padding: clamp(24px, 3vw, 44px) var(--gutter) clamp(26px, 3vw, 46px);
+}
+
+.hero__copy {
+  position: relative;
+  z-index: 1;
+  padding-right: clamp(8px, 1vw, 16px);
 }
 
 .hero__title {
-  margin: var(--space-4) 0 0;
-  font-size: clamp(54px, 9vw, 148px);
-  line-height: .86;
-  font-weight: 700;
-  letter-spacing: -0.045em;
+  width: max-content;
+  max-width: none;
+  margin: var(--space-2) 0 0;
+  font-size: clamp(46px, 7.6vw, 124px);
+  line-height: 1.02;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  text-wrap: nowrap;
+}
+
+.hero__title-line { display: block; }
+
+.hero__title-line--accent {
+  margin-top: .04em;
+  padding-right: .08em;
+  font-family: var(--font-accent);
+  font-style: italic;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--yellow);
 }
 
 .hero__text {
-  margin: var(--space-6) 0 0;
-  max-width: 40ch;
+  margin: var(--space-3) 0 0;
+  max-width: 38ch;
 }
 
 .hero__actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-4);
-  margin-top: var(--space-6);
+  margin-top: var(--space-3);
 }
 
-.hero__figure { margin: 0; }
+.hero__figure {
+  min-width: 0;
+  margin: 0 0 0 clamp(-146px, -9.5vw, -72px);
+}
 
 .frame {
   position: relative;
@@ -318,8 +367,9 @@ a:hover { color: var(--yellow); }
   justify-content: space-between;
   gap: var(--space-4);
   margin-top: var(--space-2);
-  font-size: 13px;
-  letter-spacing: .06em;
+  font-family: var(--font-utility);
+  font-size: 11px;
+  letter-spacing: .04em;
   color: var(--n500);
 }
 
@@ -346,9 +396,10 @@ a:hover { color: var(--yellow); }
   display: flex;
   gap: var(--space-8);
   flex: 0 0 50%;
-  padding: 10px var(--gutter);
+  padding: 15px var(--gutter);
+  font-family: var(--font-utility);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   letter-spacing: .16em;
   text-transform: uppercase;
   white-space: nowrap;
@@ -361,7 +412,7 @@ a:hover { color: var(--yellow); }
 
 /* ── Каталог ─────────────────────────────────────────────────────────── */
 
-.section { padding: clamp(40px, 6vw, 92px) var(--gutter); }
+.section { padding: clamp(56px, 6.4vw, 118px) var(--gutter); }
 
 .section--flush-bottom { padding-bottom: 0; }
 
@@ -377,16 +428,16 @@ a:hover { color: var(--yellow); }
 
 .section__title {
   margin: var(--space-3) 0 0;
-  font-size: clamp(38px, 6vw, 88px);
-  line-height: .9;
-  font-weight: 700;
-  letter-spacing: -0.04em;
+  font-size: clamp(34px, 5vw, 76px);
+  line-height: 1.06;
+  font-weight: 400;
+  letter-spacing: -0.02em;
 }
 
 .section__note {
   margin: 0;
-  max-width: 30ch;
-  font-size: 15px;
+  max-width: 32ch;
+  font-size: 16px;
   line-height: 1.55;
   color: var(--n400);
 }
@@ -411,8 +462,9 @@ a:hover { color: var(--yellow); }
   border: 1px solid var(--n700);
   background: transparent;
   color: var(--n300);
-  font-family: var(--font);
-  font-size: 15px;
+  font-family: var(--font-utility);
+  font-size: 12px;
+  letter-spacing: .02em;
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: border-color .3s ease, color .3s ease, background .3s ease;
@@ -437,7 +489,8 @@ a:hover { color: var(--yellow); }
   align-items: center;
   gap: var(--space-2);
   min-width: 0;
-  font-size: 14px;
+  font-family: var(--font-utility);
+  font-size: 12px;
   color: var(--n500);
 }
 
@@ -448,8 +501,8 @@ a:hover { color: var(--yellow); }
   border: 1px solid var(--n700);
   background: transparent;
   color: var(--n300);
-  font-family: var(--font);
-  font-size: 15px;
+  font-family: var(--font-utility);
+  font-size: 12px;
   border-radius: var(--radius-md);
   cursor: pointer;
 }
@@ -465,11 +518,80 @@ a:hover { color: var(--yellow); }
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr));
-  column-gap: clamp(20px, 2.6vw, 44px);
-  row-gap: clamp(32px, 3.4vw, 58px);
-  padding: clamp(30px, 3.4vw, 54px) 0 clamp(40px, 5vw, 80px);
+  /* Не больше четырёх карточек в ряд: на широком экране изделия
+     показываются крупно, а не мельчают. */
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  column-gap: clamp(20px, 2.2vw, 36px);
+  row-gap: clamp(40px, 4vw, 68px);
+  padding: clamp(36px, 3.8vw, 60px) 0 clamp(40px, 5vw, 80px);
 }
+
+.catalog-body > .grid { padding-bottom: clamp(20px, 2.4vw, 34px); }
+
+/* «Посмотреть все»: до нажатия видно две строки карточек. Переключателем
+   служит скрытый чекбокс — раскрытие работает и без JS. */
+.reveal__toggle {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.reveal__toggle:not(:checked) ~ .grid > .card:nth-child(n + 9) { display: none; }
+
+.reveal {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: clamp(40px, 5vw, 80px);
+  padding: clamp(15px, 1.5vw, 23px) clamp(20px, 2.2vw, 34px);
+  background-image: linear-gradient(90deg,
+    var(--ink-deep) 0%,
+    var(--ink-deep) 22%,
+    #4a3a06 52%,
+    #9b7a00 74%,
+    var(--yellow) 100%);
+  background-size: 180% 100%;
+  background-position: 0 0;
+  border: 1px solid var(--n900);
+  color: var(--n100);
+  font-family: var(--font-display);
+  font-size: clamp(18px, 1.5vw, 24px);
+  cursor: pointer;
+  transition: background-position .55s var(--ease);
+}
+
+.reveal:hover,
+.reveal__toggle:focus-visible ~ .reveal { background-position: 100% 0; }
+
+.reveal__toggle:focus-visible ~ .reveal {
+  outline: 2px solid var(--yellow);
+  outline-offset: 3px;
+}
+
+/* Подпись справа лежит на жёлтом конце градиента, поэтому она тёмная. */
+.reveal__count {
+  font-family: var(--font-utility);
+  font-size: 13px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--ink);
+}
+
+.reveal__text--less,
+.reveal__count--less { display: none; }
+
+.reveal__toggle:checked ~ .reveal .reveal__text--more,
+.reveal__toggle:checked ~ .reveal .reveal__count--more { display: none; }
+
+.reveal__toggle:checked ~ .reveal .reveal__text--less,
+.reveal__toggle:checked ~ .reveal .reveal__count--less { display: inline; }
 
 .card { display: block; }
 
@@ -484,7 +606,7 @@ a:hover { color: var(--yellow); }
 .card__img {
   display: block;
   width: 100%;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 4 / 5;
   object-fit: cover;
   filter: grayscale(1) contrast(1.28) brightness(.92);
   transition: transform .9s var(--ease), filter .5s ease;
@@ -496,6 +618,42 @@ a:hover { color: var(--yellow); }
   filter: grayscale(0) contrast(1.06) brightness(1);
 }
 
+/* Плашка вместо фотографии: пока съёмки нет, изделие всё равно видно
+   на витрине — с артикулом, параметрами и ценой. */
+.ph {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  background-color: var(--ink-deep);
+  background-image: repeating-linear-gradient(-45deg, transparent 0 11px, rgba(237, 187, 0, .05) 11px 22px);
+  color: var(--n500);
+}
+
+.ph__mark {
+  font-family: var(--font-display);
+  font-size: clamp(26px, 3.6vw, 42px);
+  font-weight: 400;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: var(--yellow);
+  opacity: .5;
+}
+
+.ph__text {
+  font-family: var(--font-utility);
+  font-size: 12px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.product__figure .ph { aspect-ratio: 4 / 5; }
+
+.frame .ph { aspect-ratio: 4 / 3; }
+
 .card__kicker {
   position: absolute;
   top: 0;
@@ -503,9 +661,10 @@ a:hover { color: var(--yellow); }
   padding: 5px 10px;
   background: var(--yellow);
   color: var(--ink);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: .12em;
+  font-family: var(--font-utility);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: .08em;
   text-transform: uppercase;
 }
 
@@ -513,26 +672,37 @@ a:hover { color: var(--yellow); }
   display: flex;
   justify-content: space-between;
   gap: var(--space-3);
-  margin-top: var(--space-3);
+  margin-top: var(--space-4);
+  font-family: var(--font-utility);
   font-size: 12px;
-  letter-spacing: .12em;
+  letter-spacing: .1em;
   text-transform: uppercase;
   color: var(--n500);
 }
 
 .card__name {
-  margin: var(--space-2) 0 0;
-  font-size: clamp(21px, 1.7vw, 27px);
-  line-height: 1.1;
+  margin: var(--space-3) 0 0;
+  font-size: clamp(22px, 1.7vw, 28px);
+  line-height: 1.16;
   font-weight: 600;
-  letter-spacing: -0.025em;
+  letter-spacing: -0.008em;
+  /* Жёлтая черта подчёркивает название при наведении — единственное
+     движение в карточке, кроме проявления фотографии. */
+  background-image: linear-gradient(var(--yellow), var(--yellow));
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  background-size: 0 1px;
+  transition: background-size .55s var(--ease);
 }
 
+.card:hover .card__name,
+.card:focus-visible .card__name { background-size: 100% 1px; }
+
 .card__desc {
-  margin: var(--space-2) 0 0;
-  font-size: 15px;
-  line-height: 1.5;
-  color: var(--n400);
+  margin: var(--space-3) 0 0;
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--n300);
 }
 
 .price-row {
@@ -542,14 +712,19 @@ a:hover { color: var(--yellow); }
   margin-top: var(--space-3);
 }
 
+/* Цены — моноширинными: цифры выстраиваются в колонку, а XXX читается
+   как позиция прайса, а не как сломанная вёрстка. */
 .price {
-  font-size: 21px;
-  font-weight: 600;
+  font-family: var(--font-utility);
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: .01em;
   color: var(--yellow);
 }
 
 .price--old {
-  font-size: 15px;
+  font-family: var(--font-utility);
+  font-size: 14px;
   color: var(--n500);
   text-decoration: line-through;
 }
@@ -578,8 +753,9 @@ a:hover { color: var(--yellow); }
 }
 
 .custom__eyebrow {
-  font-size: 13px;
-  letter-spacing: .16em;
+  font-family: var(--font-utility);
+  font-size: 12px;
+  letter-spacing: .08em;
   text-transform: uppercase;
   opacity: .62;
 }
@@ -588,13 +764,14 @@ a:hover { color: var(--yellow); }
   margin: var(--space-3) 0 0;
   font-size: clamp(38px, 6vw, 92px);
   line-height: .9;
-  font-weight: 700;
-  letter-spacing: -0.04em;
+  font-weight: 400;
+  letter-spacing: -0.06em;
 }
 
 .custom__title em {
+  font-family: var(--font-accent);
   font-style: italic;
-  font-weight: 400;
+  font-weight: 500;
 }
 
 .custom__text {
@@ -623,6 +800,7 @@ a:hover { color: var(--yellow); }
 }
 
 .steps__num {
+  font-family: var(--font-utility);
   font-size: 20px;
   opacity: .55;
 }
@@ -657,8 +835,9 @@ a:hover { color: var(--yellow); }
 }
 
 .feature__index {
+  font-family: var(--font-utility);
   font-size: 12px;
-  letter-spacing: .16em;
+  letter-spacing: .08em;
   text-transform: uppercase;
   color: var(--yellow);
 }
@@ -670,6 +849,7 @@ a:hover { color: var(--yellow); }
 }
 
 .delivery__num {
+  font-family: var(--font-utility);
   font-size: 19px;
   color: var(--yellow);
 }
@@ -704,8 +884,8 @@ a:hover { color: var(--yellow); }
   margin: 0;
   font-size: clamp(38px, 6.4vw, 96px);
   line-height: .88;
-  font-weight: 700;
-  letter-spacing: -0.045em;
+  font-weight: 400;
+  letter-spacing: -0.06em;
 }
 
 .contacts__text {
@@ -742,8 +922,9 @@ a:hover { color: var(--yellow); }
   justify-content: space-between;
   gap: var(--space-3);
   padding: var(--space-4) var(--gutter) var(--space-8);
-  font-size: 12px;
-  letter-spacing: .14em;
+  font-family: var(--font-utility);
+  font-size: 11px;
+  letter-spacing: .06em;
   text-transform: uppercase;
   color: var(--n600);
 }
@@ -769,9 +950,10 @@ a:hover { color: var(--yellow); }
 }
 
 .product__caption {
+  font-family: var(--font-utility);
   margin-top: var(--space-2);
   font-size: 12px;
-  letter-spacing: .12em;
+  letter-spacing: .06em;
   text-transform: uppercase;
   color: var(--n500);
 }
@@ -780,10 +962,10 @@ a:hover { color: var(--yellow); }
 
 .product__name {
   margin: var(--space-3) 0 0;
-  font-size: clamp(34px, 4.6vw, 66px);
-  line-height: .92;
-  font-weight: 700;
-  letter-spacing: -0.04em;
+  font-size: clamp(32px, 4vw, 58px);
+  line-height: 1.08;
+  font-weight: 400;
+  letter-spacing: -0.02em;
 }
 
 .product__desc {
@@ -802,13 +984,16 @@ a:hover { color: var(--yellow); }
 }
 
 .product__price {
-  font-size: clamp(30px, 3vw, 42px);
-  font-weight: 600;
+  font-family: var(--font-utility);
+  font-size: clamp(28px, 2.6vw, 38px);
+  font-weight: 500;
+  letter-spacing: -0.01em;
   color: var(--yellow);
 }
 
 .product__old {
-  font-size: 18px;
+  font-family: var(--font-utility);
+  font-size: 16px;
   color: var(--n500);
   text-decoration: line-through;
 }
@@ -831,8 +1016,9 @@ a:hover { color: var(--yellow); }
 .specs > div:last-child { border-bottom: 1px solid var(--n700); }
 
 .specs dt {
+  font-family: var(--font-utility);
   font-size: 12px;
-  letter-spacing: .14em;
+  letter-spacing: .06em;
   text-transform: uppercase;
   color: var(--n500);
 }
@@ -842,6 +1028,60 @@ a:hover { color: var(--yellow); }
   font-size: 16px;
   text-align: right;
 }
+
+/* Таблица исполнений: размеры, цвета и плотности с ценой каждой строки.
+   XXX означает, что цену ещё согласовывают. */
+.variants {
+  width: 100%;
+  max-width: 520px;
+  margin: var(--space-6) 0 0;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.variants__caption {
+  font-family: var(--font-utility);
+  padding-bottom: var(--space-2);
+  font-size: 12px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  text-align: left;
+  color: var(--n500);
+}
+
+.variants th {
+  font-family: var(--font-utility);
+  padding: var(--space-2) var(--space-4) var(--space-2) 0;
+  border-top: 1px solid var(--n700);
+  border-bottom: 1px solid var(--n700);
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--n500);
+}
+
+.variants td {
+  padding: var(--space-3) var(--space-4) var(--space-3) 0;
+  border-bottom: 1px solid var(--n900);
+  font-size: 16px;
+}
+
+.variants tr:last-child td { border-bottom: 1px solid var(--n700); }
+
+.variants__price {
+  padding-right: 0;
+  text-align: right;
+  white-space: nowrap;
+}
+
+td.variants__price {
+  font-family: var(--font-utility);
+  font-weight: 500;
+  color: var(--yellow);
+}
+
+.variants__price--unknown { letter-spacing: .1em; }
 
 .product__actions {
   display: flex;
@@ -880,8 +1120,9 @@ a:hover { color: var(--yellow); }
 }
 
 .bar__brand {
+  font-family: var(--font-display);
   font-size: 22px;
-  font-weight: 700;
+  font-weight: 400;
   letter-spacing: -0.02em;
 }
 
@@ -895,8 +1136,9 @@ a:hover { color: var(--yellow); }
   border: 1px solid var(--n600);
   background: transparent;
   color: var(--n100);
-  font-family: var(--font);
-  font-size: 15px;
+  font-family: var(--font-utility);
+  font-size: 12px;
+  letter-spacing: .02em;
   border-radius: var(--radius-md);
   cursor: pointer;
   white-space: nowrap;
@@ -931,8 +1173,9 @@ a:hover { color: var(--yellow); }
 }
 
 .field label {
+  font-family: var(--font-utility);
   font-size: 12px;
-  letter-spacing: .14em;
+  letter-spacing: .06em;
   text-transform: uppercase;
   color: var(--n500);
 }
@@ -947,7 +1190,7 @@ a:hover { color: var(--yellow); }
   border: 1px solid var(--n700);
   background: transparent;
   color: var(--n100);
-  font-family: var(--font);
+  font-family: var(--font-body);
   font-size: 17px;
   border-radius: var(--radius-md);
 }
@@ -1044,6 +1287,84 @@ a:hover { color: var(--yellow); }
   transition: opacity .85s var(--ease), transform .95s var(--ease);
 }
 
+/* ── Плёночное зерно ─────────────────────────────────────────────────── */
+
+/* Ровная заливка на большом тёмном экране выглядит пластмассовой.
+   Слой зерна поверх страницы даёт ту же фактуру, что и киноплёнка,
+   и ничего не перехватывает у курсора. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  pointer-events: none;
+  opacity: .05;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/></filter><rect width='180' height='180' filter='url(%23g)'/></svg>");
+}
+
+/* ── Переходы между страницами ───────────────────────────────────────── */
+
+/* Переход рисует браузер: старая страница уходит, новая приходит одним
+   движением. Где View Transitions не поддержаны — обычная навигация. */
+@view-transition { navigation: auto; }
+
+::view-transition-old(root),
+::view-transition-new(root) { animation-timing-function: var(--ease); }
+
+::view-transition-old(root) { animation: kpLeave .3s var(--ease) both; }
+
+::view-transition-new(root) { animation: kpArrive .45s var(--ease) both; }
+
+/* Фотография изделия переезжает из карточки в быстрый просмотр
+   и обратно — имя перехода расставляет скрипт. */
+::view-transition-group(kp-media) {
+  animation-duration: .5s;
+  animation-timing-function: var(--ease);
+}
+
+@keyframes kpLeave {
+  to {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes kpArrive {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+/* Оверлею собственное проявление не нужно, когда переходом занят браузер. */
+@supports (view-transition-name: none) {
+  .overlay { animation: none; }
+}
+
+/* ── Появление первого экрана ────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: no-preference) {
+  .hero__copy > *,
+  .hero__figure {
+    animation: kpEnter .85s var(--ease) backwards;
+  }
+
+  .hero__copy > .eyebrow { animation-delay: .05s; }
+  .hero__title-line:nth-child(1) { animation: kpEnter .85s var(--ease) .1s backwards; }
+  .hero__title-line:nth-child(2) { animation: kpEnter .85s var(--ease) .17s backwards; }
+  .hero__title-line:nth-child(3) { animation: kpEnter .85s var(--ease) .24s backwards; }
+  .hero__text { animation-delay: .3s; }
+  .hero__actions { animation-delay: .38s; }
+  .hero__figure { animation-delay: .14s; }
+}
+
+@keyframes kpEnter {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
 
@@ -1061,10 +1382,39 @@ a:hover { color: var(--yellow); }
     opacity: 1;
     transform: none;
   }
+
+  .hero__copy > *,
+  .hero__figure,
+  .hero__title-line {
+    animation: none !important;
+  }
+}
+
+/* Ступени сетки: четыре карточки в ряд на широком экране, дальше меньше.
+   Число скрытых карточек (восемь видимых) от ширины не зависит. */
+@media (max-width: 1180px) {
+  .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 860px) {
+  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  .hero {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .hero__figure { margin-left: 0; }
 }
 
 @media (max-width: 640px) {
   :root { --gutter: var(--space-4); }
+
+  .grid { grid-template-columns: minmax(0, 1fr); }
+
+  .reveal { font-size: 18px; }
+
+  .reveal__count { font-size: 11px; }
 
   .masthead__strap span:nth-child(2) { display: none; }
 

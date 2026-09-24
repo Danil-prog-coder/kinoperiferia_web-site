@@ -1,6 +1,9 @@
 package catalog
 
-import "testing"
+import (
+	"strconv"
+	"testing"
+)
 
 func TestByCategorySplitsWholeCatalog(t *testing.T) {
 	total := 0
@@ -55,8 +58,37 @@ func TestSlugsAndArticlesAreUnique(t *testing.T) {
 		if !IsCategory(p.Category) {
 			t.Errorf("%s: неизвестная категория %q", p.Slug, p.Category)
 		}
-		if p.Image == "" || p.Alt == "" {
-			t.Errorf("%s: нет изображения или alt", p.Slug)
+		// Фотографий ещё нет, но если ссылка появилась — alt обязателен.
+		if p.Image != "" && p.Alt == "" {
+			t.Errorf("%s: есть изображение без alt", p.Slug)
+		}
+	}
+}
+
+func TestVariantsMatchOptionNames(t *testing.T) {
+	for _, p := range All() {
+		if !p.HasVariants() {
+			if len(p.OptionNames) > 0 {
+				t.Errorf("%s: объявлены параметры без исполнений", p.Slug)
+			}
+			continue
+		}
+		if len(p.OptionNames) == 0 {
+			t.Errorf("%s: исполнения без названий колонок", p.Slug)
+		}
+		if p.Price != 0 {
+			t.Errorf("%s: у изделия с исполнениями цена берётся из них, поле Price должно быть нулевым", p.Slug)
+		}
+		for i, v := range p.Variants {
+			if len(v.Values) != len(p.OptionNames) {
+				t.Errorf("%s: исполнение %d описано %d значениями, колонок %d",
+					p.Slug, i, len(v.Values), len(p.OptionNames))
+			}
+			for j, value := range v.Values {
+				if value == "" {
+					t.Errorf("%s: исполнение %d, пустое значение в колонке %q", p.Slug, i, p.OptionNames[j])
+				}
+			}
 		}
 	}
 }
@@ -66,8 +98,8 @@ func TestBySlug(t *testing.T) {
 	if !ok {
 		t.Fatal("cinesaddle не найден")
 	}
-	if p.Price != 17000 {
-		t.Errorf("цена Cinesaddle = %d, ожидалось 17000", p.Price)
+	if got := p.MinPrice(); got != 15500 {
+		t.Errorf("цена синесэдла = %d, ожидалось 15500", got)
 	}
 	if _, ok := BySlug("нет-такого"); ok {
 		t.Error("несуществующий slug найден")
@@ -77,25 +109,26 @@ func TestBySlug(t *testing.T) {
 func TestSortPriceKeepsPricelessLast(t *testing.T) {
 	for _, mode := range []string{SortPriceAsc, SortPriceDesc} {
 		list := Sort(All(), mode)
-		if last := list[len(list)-1]; last.Price != 0 {
+		if last := list[len(list)-1]; last.SortPrice() != 0 {
 			t.Errorf("%s: последним оказалось %q с ценой %d, ожидалось изделие без цены",
-				mode, last.Slug, last.Price)
+				mode, last.Slug, last.SortPrice())
 		}
 
 		prev := -1
 		for _, p := range list {
-			if p.Price == 0 {
+			price := p.SortPrice()
+			if price == 0 {
 				continue
 			}
 			if prev >= 0 {
-				if mode == SortPriceAsc && p.Price < prev {
-					t.Errorf("%s: %d идёт после %d", mode, p.Price, prev)
+				if mode == SortPriceAsc && price < prev {
+					t.Errorf("%s: %d идёт после %d", mode, price, prev)
 				}
-				if mode == SortPriceDesc && p.Price > prev {
-					t.Errorf("%s: %d идёт после %d", mode, p.Price, prev)
+				if mode == SortPriceDesc && price > prev {
+					t.Errorf("%s: %d идёт после %d", mode, price, prev)
 				}
 			}
-			prev = p.Price
+			prev = price
 		}
 	}
 }
@@ -131,7 +164,11 @@ func TestPriceLabels(t *testing.T) {
 	}{
 		{Product{Price: 17000}, "17 000 ₽"},
 		{Product{Price: 35000, From: true}, "от 35 000 ₽"},
-		{Product{}, "—"},
+		{Product{}, PriceUnknown},
+		{withVariants(15500, 15500), "15 500 ₽"},
+		{withVariants(300, 1400), "от 300 ₽"},
+		{withVariants(1500, 0), "от 1 500 ₽"},
+		{withVariants(0, 0), PriceUnknown},
 	}
 	for _, c := range cases {
 		if got := c.p.PriceLabel(); got != c.want {
@@ -155,5 +192,64 @@ func TestTagFallsBackWhenKickerDuplicatesCategory(t *testing.T) {
 	p.Kicker = "Sale"
 	if got := p.Tag(); got != "Sale" {
 		t.Errorf("Tag() = %q, ожидалось «Sale»", got)
+	}
+}
+
+// withVariants собирает изделие с исполнениями по списку цен: 0 означает, что
+// цена этого исполнения ещё не согласована.
+func withVariants(prices ...int) Product {
+	p := Product{OptionNames: []string{"Размер"}}
+	for i, price := range prices {
+		p.Variants = append(p.Variants, Variant{Values: []string{strconv.Itoa(i)}, Price: price})
+	}
+	return p
+}
+
+func TestVariantPriceLabel(t *testing.T) {
+	if got := (Variant{Price: 1400}).PriceLabel(); got != "1 400 ₽" {
+		t.Errorf("PriceLabel() = %q", got)
+	}
+	if got := (Variant{}).PriceLabel(); got != PriceUnknown {
+		t.Errorf("PriceLabel() без цены = %q, ожидалось %q", got, PriceUnknown)
+	}
+}
+
+func TestMinMaxAndUnknownPrice(t *testing.T) {
+	p := withVariants(1400, 300, 0)
+	if got := p.MinPrice(); got != 300 {
+		t.Errorf("MinPrice() = %d, ожидалось 300", got)
+	}
+	if got := p.MaxPrice(); got != 1400 {
+		t.Errorf("MaxPrice() = %d, ожидалось 1400", got)
+	}
+	if got := p.PricedVariants(); got != 2 {
+		t.Errorf("PricedVariants() = %d, ожидалось 2", got)
+	}
+	if !p.HasUnknownPrice() {
+		t.Error("HasUnknownPrice() = false, хотя у одного исполнения цены нет")
+	}
+
+	if withVariants(1400, 300).HasUnknownPrice() {
+		t.Error("HasUnknownPrice() = true, хотя цены есть у всех исполнений")
+	}
+
+	single := Product{Price: 15500}
+	if got := single.MinPrice(); got != 15500 {
+		t.Errorf("MinPrice() изделия без исполнений = %d", got)
+	}
+	if single.HasUnknownPrice() {
+		t.Error("HasUnknownPrice() = true у изделия с ценой")
+	}
+	if !(Product{}).HasUnknownPrice() {
+		t.Error("HasUnknownPrice() = false у изделия без цены")
+	}
+}
+
+func TestHasPhoto(t *testing.T) {
+	if (Product{}).HasPhoto() {
+		t.Error("HasPhoto() = true без ссылки на фотографию")
+	}
+	if !(Product{Image: "https://example.test/p.jpg"}).HasPhoto() {
+		t.Error("HasPhoto() = false при заполненном Image")
 	}
 }

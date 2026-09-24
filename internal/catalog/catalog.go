@@ -8,6 +8,10 @@ import (
 	"strings"
 )
 
+// PriceUnknown — подпись вместо цены, пока она не согласована. Такие позиции
+// остаются на витрине: покупатель видит изделие и параметры и пишет в Telegram.
+const PriceUnknown = "XXX"
+
 // Category — раздел каталога. Slug используется в URL, Title — в интерфейсе.
 type Category struct {
 	Slug  string
@@ -32,19 +36,41 @@ type Product struct {
 	Kicker   string `json:"kicker"`   // подпись на плашке карточки
 	Desc     string `json:"desc"`     // короткое описание в карточке
 	Detail   string `json:"detail"`   // развёрнутое описание на странице изделия
-	Price    int    `json:"price"`    // цена в рублях, 0 — цены нет
+	Price    int    `json:"price"`    // цена в рублях у изделия без исполнений, 0 — цены нет
 	OldPrice int    `json:"oldPrice"` // старая цена в рублях, 0 — скидки нет
 	From     bool   `json:"from"`     // цена «от»
 	InStock  bool   `json:"inStock"`
-	Image    string `json:"image"`
+	Image    string `json:"image"` // пусто — фотографии ещё нет, показываем плашку
 	Alt      string `json:"alt"`
 	Specs    []Spec `json:"specs"`
+
+	// OptionNames — заголовки колонок таблицы исполнений, например
+	// ["Размер", "Плотность"]. Пусто, когда исполнение одно.
+	OptionNames []string `json:"optionNames"`
+	// Variants — исполнения изделия. У изделия с исполнениями цена берётся
+	// из них, поле Price остаётся нулевым.
+	Variants []Variant `json:"variants"`
 }
 
 // Spec — строка таблицы характеристик изделия.
 type Spec struct {
 	Name  string `json:"name"`
 	Value string `json:"value"`
+}
+
+// Variant — исполнение изделия: значения параметров в порядке OptionNames и
+// цена. Price == 0 означает, что цена ещё не согласована.
+type Variant struct {
+	Values []string `json:"values"`
+	Price  int      `json:"price"`
+}
+
+// PriceLabel — цена исполнения: «1 400 ₽» или XXX, если цены пока нет.
+func (v Variant) PriceLabel() string {
+	if v.Price == 0 {
+		return PriceUnknown
+	}
+	return FormatRub(v.Price)
 }
 
 // baseSpecs повторяются у всех изделий: производство и условия одинаковые.
@@ -58,143 +84,272 @@ func baseSpecs(extra ...Spec) []Spec {
 	return append(s, extra...)
 }
 
-// products — каталог в порядке вывода на витрине. Артикулы KP—01…KP—12
-// закреплены за позициями и не зависят от фильтра.
+// products — каталог в порядке вывода на витрине. Артикулы KP—01…KP—18
+// закреплены за позициями и не зависят от фильтра. Фотографий пока нет:
+// поля Image и Alt заполним, когда будет съёмка.
 var products = []Product{
 	{
-		Slug: "cinesaddle", Art: "KP—01", Name: "Cinesaddle", Category: "camera",
-		Kicker: "Для камеры",
-		Desc:   "Тихий наполнитель, съёмный чехол, поясная фиксация.",
+		Slug: "cinesaddle", Art: "KP—01", Name: "Синесэдл", Category: "camera",
+		Kicker: "Опора",
+		Desc:   "Малый и большой, пять расцветок.",
 		Detail: "Опора для съёмки с рук, капота, штатива или любой неровной поверхности. " +
 			"Наполнитель не шуршит в кадре, чехол снимается для стирки, поясная фиксация " +
 			"позволяет носить седло на себе между дублями.",
-		Price: 17000, InStock: true,
-		Image: "https://static.tildacdn.com/tild6562-3831-4536-b265-333132623033/photo_2024-10-06_11-.jpg",
-		Alt:   "Чёрный Cinesaddle Кинопериферия",
+		InStock:     true,
+		OptionNames: []string{"Размер", "Расцветка"},
+		Variants: []Variant{
+			{Values: []string{"Малый", "Чёрный"}, Price: 15500},
+			{Values: []string{"Большой", "Чёрный"}, Price: 15500},
+			{Values: []string{"Большой", "Зелёный"}, Price: 15500},
+			{Values: []string{"Большой", "Клетчатый"}, Price: 15500},
+			{Values: []string{"Большой", "Louis Vuitton"}, Price: 15500},
+		},
 		Specs: baseSpecs(Spec{Name: "Чехол", Value: "Съёмный, стирается"}),
 	},
 	{
-		Slug: "sumka-mehanika", Art: "KP—02", Name: "Сумка механика", Category: "bags",
-		Kicker: "Индивидуально",
-		Desc:   "Размер и наполнение под комплект заказчика.",
-		Detail: "Шьём под конкретный набор инструмента и расходников. Габариты, число " +
-			"отделений и раскладку карманов согласуем до пошива — по фотографиям и размерам " +
-			"вашего комплекта.",
-		Price: 35000, From: true, InStock: true,
-		Image: "https://static.tildacdn.com/tild3162-3936-4038-b730-653463353563/photo_2024-10-06_11-.jpg",
-		Alt:   "Сумка механика с жёлтыми перегородками",
-		Specs: baseSpecs(Spec{Name: "Срок", Value: "Согласуем при заказе"}),
-	},
-	{
-		Slug: "napolnenie-v-keys", Art: "KP—03", Name: "Наполнение в кейс", Category: "bags",
-		Kicker: "Под ваш кейс",
-		Desc:   "Переставные перегородки и съёмные карманы.",
-		Detail: "Тканевое наполнение вместо поролона: перегородки переставляются под новую " +
-			"оптику или монитор, карманы снимаются. Изготавливаем по внутренним размерам " +
-			"вашего кейса.",
-		Price: 15000, From: true, InStock: true,
-		Image: "https://static.tildacdn.com/tild6638-6538-4637-a666-316238646664/photo_2024-10-06_11-.jpg",
-		Alt:   "Жёлтое тканевое наполнение в кейс",
-		Specs: baseSpecs(Spec{Name: "Изготовление", Value: "По размерам кейса"}),
-	},
-	{
-		Slug: "sunhood", Art: "KP—04", Name: "Sunhood", Category: "camera",
-		Kicker: "Для монитора",
-		Desc:   "Плотная фиксация и съёмный удлинитель.",
-		Detail: "Козырёк на операторский монитор: убирает засветку на солнце, садится плотно " +
-			"и не болтается на ходу. Удлинитель снимается, когда нужен компактный профиль.",
-		Price: 6500, InStock: true,
-		Image: "https://static.tildacdn.com/tild3335-6432-4534-b436-363635303562/IMG_3662.jpg",
-		Alt:   "Козырёк Sunhood на операторском мониторе",
-		Specs: baseSpecs(Spec{Name: "Удлинитель", Value: "Съёмный"}),
-	},
-	{
-		Slug: "cinesaddle-podlokotnik", Art: "KP—05", Name: "Cinesaddle «Подлокотник»", Category: "camera",
-		Kicker: "Для камеры",
+		Slug: "cinesaddle-podlokotnik", Art: "KP—02", Name: "Синесэдл «Подлокотник»", Category: "camera",
+		Kicker: "Подлокотник",
 		Desc:   "Устойчивая статика и меньшая нагрузка на руки.",
 		Detail: "Версия седла под опору предплечьями: камера стоит стабильнее на длинных " +
 			"статичных планах, руки устают заметно меньше.",
-		Price: 17500, InStock: true,
-		Image: "https://static.tildacdn.com/tild3231-3162-4566-b761-366530623731/photo_2024-10-06_11-.jpg",
-		Alt:   "Оператор снимает с опорой Cinesaddle Подлокотник",
-		Specs: baseSpecs(Spec{Name: "Сценарий", Value: "Статика, съёмка с рук"}),
+		InStock: true,
+		Specs:   baseSpecs(Spec{Name: "Сценарий", Value: "Статика, съёмка с рук"}),
 	},
 	{
-		Slug: "meshok-s-drobyu", Art: "KP—06", Name: "Мешок с дробью", Category: "set",
+		Slug: "sunhood", Art: "KP—03", Name: "Санхуд", Category: "camera",
+		Kicker: "5″ и 7″",
+		Desc:   "Козырёк на монитор: 5 и 7 дюймов, есть пошив под заказ.",
+		Detail: "Козырёк на операторский монитор: убирает засветку на солнце, садится плотно " +
+			"и не болтается на ходу. Два ходовых размера, нестандартную диагональ шьём под заказ.",
+		InStock:     true,
+		OptionNames: []string{"Диагональ"},
+		Variants: []Variant{
+			{Values: []string{"5 дюймов"}},
+			{Values: []string{"7 дюймов"}},
+			{Values: []string{"Под заказ"}},
+		},
+		Specs: baseSpecs(Spec{Name: "Диагонали", Value: "5″, 7″, под заказ"}),
+	},
+	{
+		Slug: "dozhdevik", Art: "KP—04", Name: "Дождевик для кинокамеры", Category: "camera",
+		Kicker: "Дождь и пыль",
+		Desc:   "Два размера под разный объём сетапа.",
+		Detail: "Закрывает камеру на съёмке под дождём, снегом и в пыли. Два размера: малый — " +
+			"под компактную сборку, большой — когда на камере навешано больше.",
+		InStock:     true,
+		OptionNames: []string{"Размер"},
+		Variants: []Variant{
+			{Values: []string{"Большой"}},
+			{Values: []string{"Малый"}},
+		},
+		Specs: baseSpecs(Spec{Name: "Размеры", Value: "Малый, большой"}),
+	},
+	{
+		Slug: "sumka-mehanika-l", Art: "KP—05", Name: "Сумка механика, размер L", Category: "bags",
+		Kicker: "Размер L",
+		Desc:   "Три цвета, наполнение под ваш комплект.",
+		Detail: "Шьём под конкретный набор инструмента и расходников. Габариты, число " +
+			"отделений и раскладку карманов согласуем до пошива — по фотографиям и размерам " +
+			"вашего комплекта.",
+		InStock:     true,
+		OptionNames: []string{"Цвет"},
+		Variants: []Variant{
+			{Values: []string{"Красная"}},
+			{Values: []string{"Зелёная"}},
+			{Values: []string{"Чёрная"}},
+		},
+		Specs: baseSpecs(Spec{Name: "Размер", Value: "L"}, Spec{Name: "Срок", Value: "Согласуем при заказе"}),
+	},
+	{
+		Slug: "sumka-mehanika-xl", Art: "KP—06", Name: "Сумка механика, размер XL", Category: "bags",
+		Kicker: "Размер XL",
+		Desc:   "Та же сумка на больший комплект.",
+		Detail: "Увеличенная версия сумки механика — под расширенный набор инструмента и " +
+			"расходников. Раскладку карманов и отделений согласуем до пошива.",
+		InStock:     true,
+		OptionNames: []string{"Цвет"},
+		Variants: []Variant{
+			{Values: []string{"Красная"}},
+			{Values: []string{"Зелёная"}},
+			{Values: []string{"Чёрная"}},
+		},
+		Specs: baseSpecs(Spec{Name: "Размер", Value: "XL"}, Spec{Name: "Срок", Value: "Согласуем при заказе"}),
+	},
+	{
+		Slug: "kosmetichka-monitor", Art: "KP—07", Name: "Косметичка для монитора", Category: "bags",
+		Kicker: "Для монитора",
+		Desc:   "5 и 7 дюймов, четыре цвета на каждую диагональ.",
+		Detail: "Мягкий чехол под операторский монитор: бережёт экран от царапин и пыли в " +
+			"сумке. Две диагонали, цвет выбирается при заказе.",
+		InStock:     true,
+		OptionNames: []string{"Диагональ", "Цвет"},
+		Variants: []Variant{
+			{Values: []string{"5 дюймов", "Синяя"}},
+			{Values: []string{"5 дюймов", "Розовая"}},
+			{Values: []string{"5 дюймов", "Красная"}},
+			{Values: []string{"5 дюймов", "Зелёная"}},
+			{Values: []string{"7 дюймов", "Синяя"}},
+			{Values: []string{"7 дюймов", "Розовая"}},
+			{Values: []string{"7 дюймов", "Красная"}},
+			{Values: []string{"7 дюймов", "Фиолетовая"}},
+		},
+		Specs: baseSpecs(Spec{Name: "Диагонали", Value: "5″ и 7″"}),
+	},
+	{
+		Slug: "kofr-dlya-shtativa", Art: "KP—08", Name: "Кофр для штатива", Category: "bags",
+		Kicker: "Sachtler",
+		Desc:   "Под Sachtler и под ваш штатив.",
+		Detail: "Кофр под штатив: готовое лекало под Sachtler, остальные модели шьём по " +
+			"размерам вашего штатива с головой.",
+		InStock:     true,
+		OptionNames: []string{"Исполнение"},
+		Variants: []Variant{
+			{Values: []string{"Sachtler"}},
+			{Values: []string{"Под заказ"}},
+		},
+		Specs: baseSpecs(Spec{Name: "Изготовление", Value: "Готовое лекало или под заказ"}),
+	},
+	{
+		Slug: "organizer-pelican", Art: "KP—09", Name: "Органайзер в Pelican", Category: "bags",
+		Kicker: "Pelican",
+		Desc:   "Под 1615, 1535 и любой другой кейс.",
+		Detail: "Тканевое наполнение вместо поролона: перегородки переставляются под новую " +
+			"оптику или монитор, карманы снимаются. Готовые размеры под Pelican 1615 и 1535, " +
+			"остальные кейсы — по внутренним размерам.",
+		InStock:     true,
+		OptionNames: []string{"Кейс"},
+		Variants: []Variant{
+			{Values: []string{"Pelican 1615"}},
+			{Values: []string{"Pelican 1535"}},
+			{Values: []string{"Под заказ"}},
+		},
+		Specs: baseSpecs(Spec{Name: "Изготовление", Value: "По внутренним размерам кейса"}),
+	},
+	{
+		Slug: "sumka-easyrig", Art: "KP—10", Name: "Сумка Easyrig", Category: "bags",
+		Kicker: "Easyrig",
+		Desc:   "Переноска и хранение системы между съёмками.",
+		Detail: "Сумка под Easyrig: система едет в собранном виде и не цепляется за остальное " +
+			"оборудование в машине и на площадке.",
+		InStock: true,
+		Specs:   baseSpecs(),
+	},
+	{
+		Slug: "sumka-dlya-stoek", Art: "KP—11", Name: "Сумка для стоек", Category: "bags",
+		Kicker: "Стойки",
+		Desc:   "Переноска комплекта стоек одним местом.",
+		Detail: "Длинная сумка под осветительные стойки: комплект едет одним местом, " +
+			"ручки и лямка рассчитаны на вес набора.",
+		InStock: true,
+		Specs:   baseSpecs(),
+	},
+	{
+		Slug: "soty-titan", Art: "KP—12", Name: "Соты для Titan", Category: "light",
+		Kicker: "4 размера",
+		Desc:   "120, 103, 60 и 30 см — по три исполнения в каждом.",
+		Detail: "Сотовые насадки для света Titan. Четыре размера — 120, 103, 60 и 30 см, " +
+			"в каждом три исполнения: Full, 1/2 и 1/4. Цена зависит от размера и исполнения, " +
+			"полная таблица — ниже.",
+		InStock:     true,
+		OptionNames: []string{"Размер", "Исполнение"},
+		Variants: []Variant{
+			{Values: []string{"120 см", "Full"}, Price: 1400},
+			{Values: []string{"120 см", "1/2"}, Price: 1200},
+			{Values: []string{"120 см", "1/4"}, Price: 1000},
+			{Values: []string{"103 см", "Full"}, Price: 1300},
+			{Values: []string{"103 см", "1/2"}, Price: 1100},
+			{Values: []string{"103 см", "1/4"}, Price: 900},
+			{Values: []string{"60 см", "Full"}, Price: 750},
+			{Values: []string{"60 см", "1/2"}, Price: 650},
+			{Values: []string{"60 см", "1/4"}, Price: 550},
+			{Values: []string{"30 см", "Full"}, Price: 400},
+			{Values: []string{"30 см", "1/2"}, Price: 350},
+			{Values: []string{"30 см", "1/4"}, Price: 300},
+		},
+		Specs: baseSpecs(
+			Spec{Name: "Размеры", Value: "120, 103, 60, 30 см"},
+			Spec{Name: "Исполнения", Value: "Full, 1/2, 1/4"},
+		),
+	},
+	{
+		Slug: "soty-ulanzi", Art: "KP—13", Name: "Соты для Ulanzi", Category: "light",
+		Kicker: "Ulanzi",
+		Desc:   "Под модели AL60 и AL120.",
+		Detail: "Сотовые насадки под осветители Ulanzi AL60 и AL120: сужают луч и убирают " +
+			"засветку в стороны.",
+		InStock:     true,
+		OptionNames: []string{"Модель"},
+		Variants: []Variant{
+			{Values: []string{"AL60"}},
+			{Values: []string{"AL120"}},
+		},
+		Specs: baseSpecs(Spec{Name: "Совместимость", Value: "Ulanzi AL60, AL120"}),
+	},
+	{
+		Slug: "soty-ramy", Art: "KP—14", Name: "Соты для рам", Category: "light",
+		Kicker: "Для рам",
+		Desc:   "Четыре типоразмера: от 4 до 20 футов.",
+		Detail: "Соты на съёмочные рамы: 4, 8, 12 и 20 футов. Ставятся на раму и дают " +
+			"направленный, контролируемый свет без разлёта в стороны.",
+		InStock:     true,
+		OptionNames: []string{"Размер рамы"},
+		Variants: []Variant{
+			{Values: []string{"4 фута"}},
+			{Values: []string{"8 футов"}},
+			{Values: []string{"12 футов"}},
+			{Values: []string{"20 футов"}},
+		},
+		Specs: baseSpecs(Spec{Name: "Размеры", Value: "4, 8, 12, 20 футов"}),
+	},
+	{
+		Slug: "checkerboard", Art: "KP—15", Name: "Checkerboard", Category: "light",
+		Kicker: "8×8 и 12×12",
+		Desc:   "Отражатель-шахматка, серебро или золото.",
+		Detail: "Отражатель «шахматка» на раму: даёт рассеянный отражённый свет мягче " +
+			"зеркального серебра. Два размера и две стороны — серебро и золото.",
+		InStock:     true,
+		OptionNames: []string{"Размер", "Сторона"},
+		Variants: []Variant{
+			{Values: []string{"8×8", "Silver"}, Price: 35000},
+			{Values: []string{"8×8", "Gold"}, Price: 35000},
+			{Values: []string{"12×12", "Silver"}, Price: 46000},
+			{Values: []string{"12×12", "Gold"}, Price: 46000},
+		},
+		Specs: baseSpecs(
+			Spec{Name: "8×8", Value: "230 × 230 см"},
+			Spec{Name: "12×12", Value: "350 × 350 см"},
+		),
+	},
+	{
+		Slug: "floppy-120", Art: "KP—16", Name: "Флоппи флаг 120 × 120", Category: "light",
+		Kicker: "С юбкой",
+		Desc:   "Отсечка света, съёмный светонепроницаемый текстиль.",
+		Detail: "Флаг для отсечки света с юбкой: светонепроницаемый текстиль снимается с рамы, " +
+			"поэтому его удобно возить отдельно и менять при износе.",
+		Price: 15500, InStock: true,
+		Specs: baseSpecs(
+			Spec{Name: "Размер", Value: "120 × 120 см"},
+			Spec{Name: "Комплектация", Value: "С юбкой"},
+			Spec{Name: "Текстиль", Value: "Съёмный"},
+		),
+	},
+	{
+		Slug: "dedolight-effect-50", Art: "KP—17", Name: "Аналог Dedolight Effect 50 × 50", Category: "light",
+		Kicker: "50 × 50",
+		Desc:   "Насадка для световых эффектов.",
+		Detail: "Аналог Dedolight Effect в размере 50 × 50 см — насадка для световых эффектов " +
+			"на площадке.",
+		InStock: true,
+		Specs:   baseSpecs(Spec{Name: "Размер", Value: "50 × 50 см"}),
+	},
+	{
+		Slug: "sandbag", Art: "KP—18", Name: "Сандбег 12 кг", Category: "set",
 		Kicker: "12 кг",
 		Desc:   "Две ручки, два кольца и защищённая молния.",
-		Detail: "Противовес для стоек и журавлей: стальная дробь, две ручки для переноски, " +
-			"два кольца для подвеса, молния закрыта клапаном от пыли и зацепов.",
-		Price: 3900, InStock: true,
-		Image: "https://static.tildacdn.com/tild3362-6230-4166-a138-396339643032/photo_2024-10-06_11-.jpg",
-		Alt:   "Чёрно-жёлтый мешок со стальной дробью",
-		Specs: baseSpecs(Spec{Name: "Вес", Value: "12 кг"}, Spec{Name: "Наполнитель", Value: "Стальная дробь"}),
-	},
-	{
-		Slug: "soty-led-tube-2ft", Art: "KP—07", Name: "Соты для LED tube", Category: "light",
-		Kicker: "2 фута",
-		Desc:   "Три плотности и быстросъёмное крепление.",
-		Detail: "Сотовые насадки на двухфутовые светодиодные трубки. Три плотности под разный " +
-			"угол отсечки, крепление ставится и снимается без инструмента.",
-		Price: 5000, InStock: true,
-		Image: "https://static.tildacdn.com/tild6661-6161-4535-a462-393639356265/photo_2024-10-06_11-.jpg",
-		Alt:   "Текстильные соты для светодиодной трубки 2 фута",
-		Specs: baseSpecs(Spec{Name: "Длина", Value: "2 фута"}, Spec{Name: "Плотность", Value: "Три варианта"}),
-	},
-	{
-		Slug: "soty-led-tube-4ft", Art: "KP—08", Name: "Соты для LED tube", Category: "light",
-		Kicker: "4 фута",
-		Desc:   "Для четырёхфутовых трубок Astera и аналогов.",
-		Detail: "Тот же тип сот под четырёхфутовые трубки Astera и совместимые модели. " +
-			"Плотность подбираем под задачу — от мягкой отсечки до жёсткого контроля луча.",
-		Price: 6000, InStock: true,
-		Image: "https://static.tildacdn.com/tild3632-3832-4231-a530-663132316639/photo_2024-10-06_11-.jpg",
-		Alt:   "Текстильные соты для светодиодной трубки 4 фута",
-		Specs: baseSpecs(Spec{Name: "Длина", Value: "4 фута"}, Spec{Name: "Совместимость", Value: "Astera и аналоги"}),
-	},
-	{
-		Slug: "floppy-120", Art: "KP—09", Name: "Флоппи 120 × 120", Category: "light",
-		Kicker: "Флаг",
-		Desc:   "Съёмный светонепроницаемый текстиль.",
-		Detail: "Флаг для отсечки света: светонепроницаемый текстиль снимается с рамы, " +
-			"поэтому его удобно возить отдельно и менять при износе.",
-		Price: 15000, InStock: true,
-		Image: "https://static.tildacdn.com/tild3862-6436-4064-b239-386263636664/photo.jpeg",
-		Alt:   "Чёрный флоппи 120 на 120 сантиметров",
-		Specs: baseSpecs(Spec{Name: "Размер", Value: "120 × 120 см"}, Spec{Name: "Текстиль", Value: "Съёмный"}),
-	},
-	{
-		Slug: "organizer", Art: "KP—10", Name: "Органайзер", Category: "set",
-		Kicker: "Органайзер",
-		Desc:   "Для расходников, кабелей и мелкого оборудования.",
-		Detail: "Компактный органайзер на молнии под скотчи, стяжки, переходники и кабели. " +
-			"Помещается в сумку механика и в тележку.",
-		Price: 2000, InStock: true,
-		Image: "https://static.tildacdn.com/tild3965-3761-4936-b437-383531646132/photo_2024-10-06_11-.jpg",
-		Alt:   "Компактный прозрачный органайзер на молнии",
-		Specs: baseSpecs(Spec{Name: "Застёжка", Value: "Молния YKK"}),
-	},
-	{
-		Slug: "chehol-filtry", Art: "KP—11", Name: "Чехол для фильтров 4 × 5,65", Category: "camera",
-		Kicker: "Sale",
-		Desc:   "Защита от царапин, пыли и лёгких ударов.",
-		Detail: "Мягкий чехол под светофильтры формата 4 × 5,65 дюйма. Бережёт стекло от " +
-			"царапин и пыли в сумке и смягчает случайные удары.",
-		Price: 1500, OldPrice: 2500, InStock: true,
-		Image: "https://static.tildacdn.com/tild3539-3036-4861-a363-333263663331/photo.jpeg",
-		Alt:   "Жёлтый защитный чехол для светофильтров",
-		Specs: baseSpecs(Spec{Name: "Формат", Value: "4 × 5,65 дюйма"}),
-	},
-	{
-		Slug: "skladnaya-telezhka", Art: "KP—12", Name: "Складная тележка", Category: "set",
-		Kicker: "Нет в наличии",
-		Desc:   "Полки, съёмные крючки и складная рама.",
-		Detail: "Тележка для переброски оборудования по площадке: две полки, съёмные крючки " +
-			"под кабели, рама складывается для перевозки. Сроки уточняйте в Telegram.",
-		InStock: false,
-		Image:   "https://static.tildacdn.com/tild3964-6364-4865-a463-303465653639/photo_2024-10-06_11-.jpg",
-		Alt:     "Складная тележка с двумя полками для оборудования",
-		Specs:   baseSpecs(Spec{Name: "Полки", Value: "Две"}, Spec{Name: "Рама", Value: "Складная"}),
+		Detail: "Противовес для стоек и журавлей: две ручки для переноски, два кольца для " +
+			"подвеса, молния закрыта клапаном от пыли и зацепов.",
+		InStock: true,
+		Specs:   baseSpecs(Spec{Name: "Вес", Value: "12 кг"}),
 	},
 }
 
@@ -275,30 +430,94 @@ func Sort(list []Product, mode string) []Product {
 }
 
 func lessByPrice(a, b Product, asc bool) bool {
+	pa, pb := a.SortPrice(), b.SortPrice()
 	switch {
-	case a.Price == 0 && b.Price == 0:
+	case pa == 0 && pb == 0:
 		return false
-	case a.Price == 0:
+	case pa == 0:
 		return false
-	case b.Price == 0:
+	case pb == 0:
 		return true
 	case asc:
-		return a.Price < b.Price
+		return pa < pb
 	default:
-		return a.Price > b.Price
+		return pa > pb
 	}
 }
 
-// PriceLabel форматирует цену так, как она показана на витрине: «от 35 000 ₽»,
-// «17 000 ₽» или «—», если цены нет.
+// HasVariants сообщает, есть ли у изделия таблица исполнений.
+func (p Product) HasVariants() bool { return len(p.Variants) > 0 }
+
+// HasPhoto сообщает, есть ли у изделия фотография. Пока съёмки нет, витрина
+// показывает вместо неё плашку с названием.
+func (p Product) HasPhoto() bool { return p.Image != "" }
+
+// MinPrice — наименьшая известная цена изделия: по исполнениям, а если их нет —
+// собственная цена. 0 означает, что цены нет ни у одного исполнения.
+func (p Product) MinPrice() int {
+	if !p.HasVariants() {
+		return p.Price
+	}
+	min := 0
+	for _, v := range p.Variants {
+		if v.Price == 0 {
+			continue
+		}
+		if min == 0 || v.Price < min {
+			min = v.Price
+		}
+	}
+	return min
+}
+
+// MaxPrice — наибольшая известная цена изделия.
+func (p Product) MaxPrice() int {
+	if !p.HasVariants() {
+		return p.Price
+	}
+	max := 0
+	for _, v := range p.Variants {
+		if v.Price > max {
+			max = v.Price
+		}
+	}
+	return max
+}
+
+// SortPrice — цена, по которой изделие участвует в сортировке витрины.
+func (p Product) SortPrice() int { return p.MinPrice() }
+
+// PricedVariants — число исполнений с известной ценой.
+func (p Product) PricedVariants() int {
+	n := 0
+	for _, v := range p.Variants {
+		if v.Price > 0 {
+			n++
+		}
+	}
+	return n
+}
+
+// HasUnknownPrice сообщает, что у изделия или у части его исполнений цены
+// пока нет — витрина показывает XXX и предлагает уточнить её в Telegram.
+func (p Product) HasUnknownPrice() bool {
+	if p.HasVariants() {
+		return p.PricedVariants() != len(p.Variants)
+	}
+	return p.Price == 0
+}
+
+// PriceLabel форматирует цену так, как она показана на витрине: «15 500 ₽»,
+// «от 300 ₽» — когда исполнения стоят по-разному, и XXX — пока цены нет.
 func (p Product) PriceLabel() string {
-	if p.Price == 0 {
-		return "—"
+	min := p.MinPrice()
+	if min == 0 {
+		return PriceUnknown
 	}
-	if p.From {
-		return "от " + FormatRub(p.Price)
+	if p.From || min != p.MaxPrice() || p.PricedVariants() != len(p.Variants) {
+		return "от " + FormatRub(min)
 	}
-	return FormatRub(p.Price)
+	return FormatRub(min)
 }
 
 // OldPriceLabel возвращает зачёркнутую цену или пустую строку, если скидки нет.

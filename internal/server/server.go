@@ -143,6 +143,10 @@ var sortTitles = []struct{ Value, Title string }{
 	{catalog.SortName, "По названию"},
 }
 
+// visibleCards — сколько карточек видно до нажатия «Посмотреть все»:
+// две строки по четыре. Остальные раскрываются по кнопке.
+const visibleCards = 8
+
 // buildCatalogView собирает состояние витрины из query-параметров cat и sort.
 // Неизвестные значения молча заменяются значениями по умолчанию: ссылки на
 // каталог часто приходят извне, и падать из-за мусора в query не нужно.
@@ -181,6 +185,11 @@ func (s *Server) buildCatalogView(r *http.Request, action, heading string) catal
 		options = append(options, sortOption{Value: o.Value, Title: o.Title, Selected: o.Value == sortMode})
 	}
 
+	hidden := len(list) - visibleCards
+	if hidden < 0 {
+		hidden = 0
+	}
+
 	return catalogView{
 		Heading:        heading,
 		CountLabel:     countLabel(len(list), cat == ""),
@@ -189,6 +198,8 @@ func (s *Server) buildCatalogView(r *http.Request, action, heading string) catal
 		Categories:     filters,
 		SortOptions:    options,
 		Products:       list,
+		Collapsible:    hidden > 0,
+		HiddenCount:    hidden,
 	}
 }
 

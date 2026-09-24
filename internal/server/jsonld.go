@@ -44,25 +44,45 @@ func (s *Server) productJSONLD(p catalog.Product) template.JS {
 		"name":        p.Name,
 		"sku":         p.Art,
 		"description": p.Detail,
-		"image":       p.Image,
 		"category":    p.CategoryTitle(),
 		"brand": map[string]any{
 			"@type": "Brand",
 			"name":  site.Brand,
 		},
 	}
+	// Фотографии может не быть: пустое поле image поисковики считают ошибкой,
+	// поэтому лучше его не выводить вовсе.
+	if p.HasPhoto() {
+		data["image"] = p.Image
+	}
 
-	if p.Price > 0 {
+	// Цены может не быть ни у одного исполнения — тогда блока offers нет:
+	// предложение без цены разметке Schema.org не нужно.
+	if min := p.MinPrice(); min > 0 {
 		availability := "https://schema.org/InStock"
 		if !p.InStock {
 			availability = "https://schema.org/OutOfStock"
 		}
-		data["offers"] = map[string]any{
-			"@type":         "Offer",
-			"price":         p.Price,
-			"priceCurrency": "RUB",
-			"availability":  availability,
-			"url":           s.canonical("/product/" + p.Slug),
+		url := s.canonical("/product/" + p.Slug)
+
+		if max := p.MaxPrice(); max > min {
+			data["offers"] = map[string]any{
+				"@type":         "AggregateOffer",
+				"lowPrice":      min,
+				"highPrice":     max,
+				"offerCount":    p.PricedVariants(),
+				"priceCurrency": "RUB",
+				"availability":  availability,
+				"url":           url,
+			}
+		} else {
+			data["offers"] = map[string]any{
+				"@type":         "Offer",
+				"price":         min,
+				"priceCurrency": "RUB",
+				"availability":  availability,
+				"url":           url,
+			}
 		}
 	}
 

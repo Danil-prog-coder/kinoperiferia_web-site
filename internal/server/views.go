@@ -82,6 +82,10 @@ type catalogView struct {
 	Categories     []categoryFilter
 	SortOptions    []sortOption
 	Products       []catalog.Product
+	// Collapsible — изделий больше, чем помещается в две строки: витрина
+	// показывает первые и кнопку «Посмотреть все».
+	Collapsible bool
+	HiddenCount int
 }
 
 // indexPage — главная страница.
@@ -153,9 +157,20 @@ type productDTO struct {
 	OldPriceLabel string         `json:"oldPriceLabel"`
 	Image         string         `json:"image"`
 	Alt           string         `json:"alt"`
+	HasPhoto      bool           `json:"hasPhoto"`
 	URL           string         `json:"url"`
 	Telegram      string         `json:"telegram"`
 	Specs         []catalog.Spec `json:"specs"`
+	OptionNames   []string       `json:"optionNames"`
+	Variants      []variantDTO   `json:"variants"`
+}
+
+// variantDTO — исполнение изделия в JSON API: значения параметров в порядке
+// optionNames и цена с готовой подписью («1 400 ₽» или XXX).
+type variantDTO struct {
+	Values     []string `json:"values"`
+	Price      int      `json:"price"`
+	PriceLabel string   `json:"priceLabel"`
 }
 
 func toDTO(p catalog.Product) productDTO {
@@ -169,7 +184,7 @@ func toDTO(p catalog.Product) productDTO {
 		Tag:           p.Tag(),
 		Desc:          p.Desc,
 		Detail:        p.Detail,
-		Price:         p.Price,
+		Price:         p.SortPrice(),
 		OldPrice:      p.OldPrice,
 		From:          p.From,
 		InStock:       p.InStock,
@@ -177,10 +192,21 @@ func toDTO(p catalog.Product) productDTO {
 		OldPriceLabel: p.OldPriceLabel(),
 		Image:         p.Image,
 		Alt:           p.Alt,
+		HasPhoto:      p.HasPhoto(),
 		URL:           "/product/" + p.Slug,
 		Telegram:      site.Telegram,
 		Specs:         p.Specs,
+		OptionNames:   p.OptionNames,
+		Variants:      toVariantDTOs(p.Variants),
 	}
+}
+
+func toVariantDTOs(list []catalog.Variant) []variantDTO {
+	out := make([]variantDTO, 0, len(list))
+	for _, v := range list {
+		out = append(out, variantDTO{Values: v.Values, Price: v.Price, PriceLabel: v.PriceLabel()})
+	}
+	return out
 }
 
 func toDTOs(list []catalog.Product) []productDTO {

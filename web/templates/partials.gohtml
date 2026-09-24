@@ -30,10 +30,21 @@
 </div>
 {{- end -}}
 
+{{- define "photo-placeholder" -}}
+<div class="ph" role="img" aria-label="Фотография изделия «{{ .Name }}» появится позже">
+  <span class="ph__mark">КП</span>
+  <span class="ph__text">Фото скоро</span>
+</div>
+{{- end -}}
+
 {{- define "card" -}}
 <a class="card" href="/product/{{ .Slug }}" data-quick-view="{{ .Slug }}">
   <div class="card__media">
+    {{- if .HasPhoto }}
     <img class="card__img" src="{{ .Image }}" alt="{{ .Alt }}" loading="lazy" decoding="async" width="540" height="540">
+    {{- else }}
+    {{ template "photo-placeholder" . }}
+    {{- end }}
     <span class="card__kicker">{{ .Kicker }}</span>
   </div>
   <div class="card__meta"><span>{{ .Art }}</span><span>{{ .CategoryTitle }}</span></div>
@@ -78,15 +89,28 @@
 
   <div class="rule-thin" style="margin-top: var(--space-6)"></div>
 
-  {{- if .Catalog.Products }}
-  <div class="grid" id="catalog-grid">
-    {{- range .Catalog.Products }}
-    {{ template "card" . }}
+  <div class="catalog-body" data-catalog-body>
+    {{- if .Catalog.Products }}
+    {{- if .Catalog.Collapsible }}
+    <input class="reveal__toggle" type="checkbox" id="reveal-catalog" aria-label="Показать все изделия каталога">
+    {{- end }}
+    <div class="grid" id="catalog-grid">
+      {{- range .Catalog.Products }}
+      {{ template "card" . }}
+      {{- end }}
+    </div>
+    {{- if .Catalog.Collapsible }}
+    <label class="reveal" for="reveal-catalog">
+      <span class="reveal__text reveal__text--more">Посмотреть все</span>
+      <span class="reveal__text reveal__text--less">Свернуть</span>
+      <span class="reveal__count reveal__count--more" aria-hidden="true">ещё {{ .Catalog.HiddenCount }} ↓</span>
+      <span class="reveal__count reveal__count--less" aria-hidden="true">↑</span>
+    </label>
+    {{- end }}
+    {{- else }}
+    <p class="empty" id="catalog-grid">В этой категории пока пусто. Загляните в другие разделы или напишите в Telegram — сошьём под задачу.</p>
     {{- end }}
   </div>
-  {{- else }}
-  <p class="empty" id="catalog-grid">В этой категории пока пусто. Загляните в другие разделы или напишите в Telegram — сошьём под задачу.</p>
-  {{- end }}
 </section>
 {{- end -}}
 

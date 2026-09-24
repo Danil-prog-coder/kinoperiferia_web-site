@@ -28,11 +28,13 @@
       })
       .then(function (html) {
         var doc = new DOMParser().parseFromString(html, 'text/html');
-        var fresh = doc.getElementById('catalog-grid');
-        var current = document.getElementById('catalog-grid');
+        // Меняем блок целиком: вместе с сеткой обновляются переключатель
+        // «Посмотреть все» и число скрытых карточек.
+        var fresh = doc.querySelector('[data-catalog-body]');
+        var current = document.querySelector('[data-catalog-body]');
         if (!fresh || !current) throw new Error('нет сетки каталога');
         current.replaceWith(fresh);
-        grid = fresh;
+        grid = fresh.querySelector('#catalog-grid');
 
         var counter = doc.querySelector('#catalog .eyebrow');
         var liveCounter = document.querySelector('#catalog .eyebrow');
@@ -78,6 +80,46 @@
   var lastFocus = null;
   var quickViewOpen = false;
 
+  /* Фотография карточки и фотография в быстром просмотре получают на время
+     перехода одно имя — браузер сам переводит одну в другую. Имя должно быть
+     в документе ровно одно, поэтому у карточки его забираем в тот же момент,
+     когда отдаём оверлею. */
+  var MEDIA_NAME = 'kp-media';
+  var activeMedia = null;
+
+  function morphSupported() {
+    return !reduced &&
+      typeof document.startViewTransition === 'function' &&
+      document.visibilityState === 'visible';
+  }
+
+  // Заглушка повторяет интерфейс startViewTransition: код вызова один и тот же
+  // и там, где переходов нет.
+  function morph(update) {
+    if (!morphSupported()) {
+      update();
+      return { finished: Promise.resolve(), updateCallbackDone: Promise.resolve() };
+    }
+
+    var transition = document.startViewTransition(update);
+
+    // Пока вкладка не перерисовывается, браузер откладывает переход, а вместе
+    // с ним и саму подмену разметки. Страховка: если за треть секунды кадр не
+    // случился, показываем результат без анимации.
+    var guard = window.setTimeout(function () {
+      if (typeof transition.skipTransition === 'function') transition.skipTransition();
+    }, 350);
+    var clearGuard = function () { window.clearTimeout(guard); };
+    transition.updateCallbackDone.then(clearGuard, clearGuard);
+
+    return transition;
+  }
+
+  function releaseMedia() {
+    if (activeMedia) activeMedia.style.viewTransitionName = '';
+    activeMedia = null;
+  }
+
   function moneyRow(p) {
     var old = p.oldPriceLabel ? '<span class="product__old">' + esc(p.oldPriceLabel) + '</span>' : '';
     return '<div class="product__price-row"><span class="product__price">' +
@@ -88,6 +130,38 @@
     return String(s == null ? '' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  /* Фотографии у части изделий ещё нет — вместо неё та же плашка, что и на
+     витрине, чтобы быстрый просмотр не открывался с битой картинкой. */
+  function media(p) {
+    if (p.hasPhoto) {
+      return '<img class="product__img" src="' + esc(p.image) + '" alt="' + esc(p.alt) + '">';
+    }
+    return '<div class="ph" role="img" aria-label="Фотография изделия «' + esc(p.name) + '» появится позже">' +
+      '<span class="ph__mark">КП</span><span class="ph__text">Фото скоро</span></div>';
+  }
+
+  function variantsTable(p) {
+    var variants = p.variants || [];
+    if (!variants.length) return '';
+
+    var head = (p.optionNames || []).map(function (name) {
+      return '<th scope="col">' + esc(name) + '</th>';
+    }).join('') + '<th scope="col" class="variants__price">Цена</th>';
+
+    var rows = variants.map(function (v) {
+      var cells = (v.values || []).map(function (value) {
+        return '<td>' + esc(value) + '</td>';
+      }).join('');
+      var cls = 'variants__price' + (v.price ? '' : ' variants__price--unknown');
+      return '<tr>' + cells + '<td class="' + cls + '">' + esc(v.priceLabel) + '</td></tr>';
+    }).join('');
+
+    return '<table class="variants">' +
+      '<caption class="variants__caption">Исполнения и цены</caption>' +
+      '<thead><tr>' + head + '</tr></thead>' +
+      '<tbody>' + rows + '</tbody></table>';
   }
 
   function renderOverlay(p) {
@@ -103,7 +177,7 @@
       '<div class="rule-thin bar__rule"></div>' +
       '<div class="product">' +
         '<figure class="product__figure">' +
-          '<img class="product__img" src="' + esc(p.image) + '" alt="' + esc(p.alt) + '">' +
+          media(p) +
           '<figcaption class="product__caption">' + esc(p.art) + ' · ' + esc(p.categoryTitle) + '</figcaption>' +
         '</figure>' +
         '<div>' +
@@ -111,6 +185,7 @@
           '<h2 class="product__name">' + esc(p.name) + '</h2>' +
           '<p class="product__desc">' + esc(p.detail) + '</p>' +
           moneyRow(p) +
+          variantsTable(p) +
           '<dl class="specs">' + specs + '</dl>' +
           '<div class="product__actions">' +
             '<a class="btn btn--solid" href="' + esc(p.telegram) + '" target="_blank" rel="noopener noreferrer">Уточнить наличие и заказать ↗</a>' +
@@ -121,7 +196,7 @@
       '</div>';
   }
 
-  function openQuickView(slug, href) {
+  function openQuickView(card, slug, href) {
     return fetch('/api/products/' + encodeURIComponent(slug), { headers: { Accept: 'application/json' } })
       .then(function (r) {
         if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -129,17 +204,41 @@
       })
       .then(function (p) {
         lastFocus = document.activeElement;
-        renderOverlay(p);
-        quickViewOpen = true;
-        overlay.hidden = false;
-        overlay.removeAttribute('aria-hidden');
-        overlay.classList.remove('overlay--closing');
-        overlay.scrollTop = 0;
-        document.body.style.overflow = 'hidden';
+
+        releaseMedia();
+        if (morphSupported() && card) {
+          activeMedia = card.querySelector('.card__media');
+          if (activeMedia) activeMedia.style.viewTransitionName = MEDIA_NAME;
+        }
+
+        var transition = morph(function () {
+          if (activeMedia) activeMedia.style.viewTransitionName = '';
+          renderOverlay(p);
+          var figure = overlay.querySelector('.product__figure');
+          if (figure && activeMedia) figure.style.viewTransitionName = MEDIA_NAME;
+          quickViewOpen = true;
+          overlay.hidden = false;
+          overlay.removeAttribute('aria-hidden');
+          overlay.classList.remove('overlay--closing');
+          overlay.scrollTop = 0;
+          document.body.style.overflow = 'hidden';
+        });
+
         history.pushState({ quickView: slug }, '', href);
-        var close = overlay.querySelector('[data-close]');
-        if (close) close.focus();
+
+        // Фокус переносим после того, как разметка оверлея оказалась в DOM.
+        return transition.updateCallbackDone.then(function () {
+          var close = overlay.querySelector('[data-close]');
+          if (close) close.focus();
+        });
       });
+  }
+
+  function hideOverlay() {
+    overlay.hidden = true;
+    overlay.setAttribute('aria-hidden', 'true');
+    overlay.innerHTML = '';
+    overlay.classList.remove('overlay--closing');
   }
 
   function closeQuickView(pop) {
@@ -148,13 +247,21 @@
     if (!quickViewOpen) return;
     quickViewOpen = false;
     document.body.style.overflow = '';
-    overlay.classList.add('overlay--closing');
-    window.setTimeout(function () {
-      overlay.hidden = true;
-      overlay.setAttribute('aria-hidden', 'true');
-      overlay.innerHTML = '';
-      overlay.classList.remove('overlay--closing');
-    }, reduced ? 0 : 250);
+
+    if (morphSupported() && activeMedia) {
+      var figure = overlay.querySelector('.product__figure');
+      var transition = morph(function () {
+        if (figure) figure.style.viewTransitionName = '';
+        if (activeMedia) activeMedia.style.viewTransitionName = MEDIA_NAME;
+        hideOverlay();
+      });
+      transition.finished.then(releaseMedia, releaseMedia);
+    } else {
+      overlay.classList.add('overlay--closing');
+      window.setTimeout(hideOverlay, reduced ? 0 : 250);
+      releaseMedia();
+    }
+
     if (!pop) history.back();
     if (lastFocus && lastFocus.focus) lastFocus.focus();
   }
@@ -173,7 +280,7 @@
       if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
       if (!('fetch' in window)) return;
       e.preventDefault();
-      openQuickView(card.getAttribute('data-quick-view'), card.href).catch(function () {
+      openQuickView(card, card.getAttribute('data-quick-view'), card.href).catch(function () {
         window.location.href = card.href;
       });
     });

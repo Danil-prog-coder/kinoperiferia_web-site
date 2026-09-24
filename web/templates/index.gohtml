@@ -1,8 +1,12 @@
 {{- define "content" -}}
 <section id="top" class="hero">
-  <div>
+  <div class="hero__copy">
     <div class="eyebrow">Выпуск {{ .Year }} · изделие {{ .Hero.Art }}</div>
-    <h1 class="hero__title">Шьем,<br>чтобы <span class="italic-accent">снимать.</span></h1>
+    <h1 class="hero__title">
+      <span class="hero__title-line">Шьем,</span>
+      <span class="hero__title-line">чтобы</span>
+      <span class="hero__title-line hero__title-line--accent">снимать.</span>
+    </h1>
     <p class="lede hero__text">Синесэдлы, сумки, ложементы и текстиль для света. Готовые изделия и производство под конкретный сетап.</p>
     <div class="hero__actions">
       <a class="btn btn--solid" href="#catalog">Смотреть каталог</a>
@@ -11,7 +15,11 @@
   </div>
   <figure class="hero__figure">
     <div class="frame">
+      {{- if .Hero.HasPhoto }}
       <img id="hero-img" class="hero__img" src="{{ .Hero.Image }}" alt="{{ .Hero.Alt }}" width="1200" height="900" fetchpriority="high" decoding="async">
+      {{- else }}
+      {{ template "photo-placeholder" .Hero }}
+      {{- end }}
     </div>
     <figcaption class="hero__caption">
       <span>{{ .Hero.Name }} — {{ .Hero.Desc }}</span>
