@@ -188,11 +188,16 @@ type productDTO struct {
 }
 
 // variantDTO — исполнение изделия в JSON API: значения параметров в порядке
-// optionNames и цена с готовой подписью («1 400 ₽» или XXX).
+// optionNames, цена с готовой подписью («1 400 ₽» или XXX) и собственное
+// фото, если оно есть — клиент подставляет его вместо фото изделия при
+// выборе этого исполнения.
 type variantDTO struct {
 	Values     []string `json:"values"`
 	Price      int      `json:"price"`
 	PriceLabel string   `json:"priceLabel"`
+	Image      string   `json:"image"`
+	Alt        string   `json:"alt"`
+	HasPhoto   bool     `json:"hasPhoto"`
 }
 
 func toDTO(p catalog.Product) productDTO {
@@ -226,7 +231,14 @@ func toDTO(p catalog.Product) productDTO {
 func toVariantDTOs(list []catalog.Variant) []variantDTO {
 	out := make([]variantDTO, 0, len(list))
 	for _, v := range list {
-		out = append(out, variantDTO{Values: v.Values, Price: v.Price, PriceLabel: v.PriceLabel()})
+		out = append(out, variantDTO{
+			Values:     v.Values,
+			Price:      v.Price,
+			PriceLabel: v.PriceLabel(),
+			Image:      v.Image,
+			Alt:        v.Alt,
+			HasPhoto:   v.HasPhoto(),
+		})
 	}
 	return out
 }

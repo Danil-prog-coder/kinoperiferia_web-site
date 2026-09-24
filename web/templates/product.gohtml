@@ -5,13 +5,18 @@
 </nav>
 <div class="rule-thin bar__rule"></div>
 
-<article class="product">
+<article class="product" data-product-page="{{ .Product.Slug }}">
   <figure class="product__figure">
+    <div class="product__media" data-media>
+      {{- if .Product.HasPhoto }}
+      <img class="product__img" src="{{ .Product.Image }}" alt="{{ .Product.Alt }}" width="1000" height="1250" fetchpriority="high" decoding="async">
+      {{- else }}
+      {{ template "photo-placeholder" .Product }}
+      {{- end }}
+    </div>
     {{- if .Product.HasPhoto }}
-    <img class="product__img" src="{{ .Product.Image }}" alt="{{ .Product.Alt }}" width="1000" height="1250" fetchpriority="high" decoding="async">
     <figcaption class="product__caption">{{ .Product.Alt }}</figcaption>
     {{- else }}
-    {{ template "photo-placeholder" .Product }}
     <figcaption class="product__caption">{{ .Product.Art }} · {{ .Product.CategoryTitle }}</figcaption>
     {{- end }}
   </figure>
@@ -20,7 +25,7 @@
     <h1 class="product__name">{{ .Product.Name }}</h1>
     <p class="product__desc">{{ .Product.Detail }}</p>
     <div class="product__price-row">
-      <span class="product__price">{{ .Product.PriceLabel }}</span>
+      <span class="product__price" data-price>{{ .Product.PriceLabel }}</span>
       {{- with .Product.OldPriceLabel }}<span class="product__old">{{ . }}</span>{{ end }}
     </div>
     {{- if not .Product.InStock }}
@@ -42,8 +47,8 @@
         </tr>
       </thead>
       <tbody>
-        {{- range $v := .Product.Variants }}
-        <tr>
+        {{- range $i, $v := .Product.Variants }}
+        <tr data-variant="{{ $i }}">
           {{- range $v.Values }}
           <td>{{ . }}</td>
           {{- end }}
@@ -60,7 +65,7 @@
       {{- end }}
     </dl>
     <div class="product__actions">
-      <a class="btn btn--solid" href="{{ .TelegramHref }}" target="_blank" rel="noopener noreferrer">Уточнить наличие и заказать ↗</a>
+      <a class="btn btn--solid" data-telegram-cta href="{{ .TelegramHref }}" target="_blank" rel="noopener noreferrer">Уточнить наличие и заказать ↗</a>
       <a class="btn btn--ghost" href="/order?product={{ .Product.Slug }}">Оставить заявку</a>
     </div>
   </div>

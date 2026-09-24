@@ -174,6 +174,15 @@
       '<span class="ph__mark">КП</span><span class="ph__text">Фото скоро</span></div>';
   }
 
+  /* Фото для текущего выбора: если у исполнения есть своя фотография —
+     показываем её, иначе — фото изделия по умолчанию (или плашку). */
+  function mediaFor(p, variant) {
+    if (variant && variant.hasPhoto) {
+      return { hasPhoto: true, image: variant.image, alt: variant.alt || p.name, name: p.name };
+    }
+    return p;
+  }
+
   /* Текст сообщения в Telegram: название, артикул и, если выбрано —
      параметры исполнения. Одна и та же логика для дефолтной ссылки и для
      клика по строке таблицы исполнений. */
@@ -212,15 +221,11 @@
       return '<div><dt>' + esc(s.name) + '</dt><dd>' + esc(s.value) + '</dd></div>';
     }).join('');
 
-    overlay.innerHTML =
-      '<div class="bar">' +
-        '<span class="bar__brand">Кино<b>периферия</b></span>' +
-        '<button class="bar__close" type="button" data-close>← В каталог</button>' +
-      '</div>' +
-      '<div class="rule-thin bar__rule"></div>' +
+    var panel = overlay.querySelector('[data-qv-panel]');
+    panel.innerHTML =
       '<div class="product">' +
         '<figure class="product__figure">' +
-          media(p) +
+          '<div class="product__media" data-media>' + media(p) + '</div>' +
           '<figcaption class="product__caption">' + esc(p.art) + ' · ' + esc(p.categoryTitle) + '</figcaption>' +
         '</figure>' +
         '<div>' +
@@ -239,17 +244,19 @@
         '</div>' +
       '</div>';
 
-    var cta = overlay.querySelector('[data-telegram-cta]');
-    var priceEl = overlay.querySelector('[data-price]');
-    overlay.querySelectorAll('.variants tbody tr').forEach(function (row) {
+    var cta = panel.querySelector('[data-telegram-cta]');
+    var priceEl = panel.querySelector('[data-price]');
+    var mediaEl = panel.querySelector('[data-media]');
+    panel.querySelectorAll('.variants tbody tr').forEach(function (row) {
       row.addEventListener('click', function () {
         var idx = Number(row.getAttribute('data-variant'));
         var variant = (p.variants || [])[idx];
         if (!variant) return;
-        overlay.querySelectorAll('.variants tbody tr').forEach(function (r) { r.classList.remove('is-selected'); });
+        panel.querySelectorAll('.variants tbody tr').forEach(function (r) { r.classList.remove('is-selected'); });
         row.classList.add('is-selected');
         if (cta) cta.href = telegramHref(p, variant);
         if (priceEl) priceEl.textContent = variant.priceLabel;
+        if (mediaEl) mediaEl.innerHTML = media(mediaFor(p, variant));
       });
     });
   }
@@ -277,14 +284,15 @@
           quickViewOpen = true;
           overlay.hidden = false;
           overlay.removeAttribute('aria-hidden');
-          overlay.scrollTop = 0;
+          var scroller = overlay.querySelector('[data-qv-panel]');
+          if (scroller) scroller.scrollTop = 0;
           document.body.style.overflow = 'hidden';
         });
 
         history.pushState({ quickView: slug }, '', href);
 
         return transition.updateCallbackDone.then(function () {
-          var close = overlay.querySelector('[data-close]');
+          var close = overlay.querySelector('.qv__close');
           if (close) close.focus();
         });
       });
@@ -293,7 +301,8 @@
   function hideOverlay() {
     overlay.hidden = true;
     overlay.setAttribute('aria-hidden', 'true');
-    overlay.innerHTML = '';
+    var panel = overlay.querySelector('[data-qv-panel]');
+    if (panel) panel.innerHTML = '';
   }
 
   function closeQuickView(pop) {
@@ -352,6 +361,35 @@
         });
       }
     });
+  }
+
+  /* ── Страница изделия: смена фото и цены по исполнению ────────────── */
+  var productArticle = document.querySelector('[data-product-page]');
+  if (productArticle && 'fetch' in window) {
+    var productSlug = productArticle.getAttribute('data-product-page');
+    fetch('/api/products/' + encodeURIComponent(productSlug), { headers: { Accept: 'application/json' } })
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (p) {
+        var priceEl = productArticle.querySelector('[data-price]');
+        var cta = productArticle.querySelector('[data-telegram-cta]');
+        var mediaEl = productArticle.querySelector('[data-media]');
+        productArticle.querySelectorAll('.variants tbody tr[data-variant]').forEach(function (row) {
+          row.addEventListener('click', function () {
+            var idx = Number(row.getAttribute('data-variant'));
+            var variant = (p.variants || [])[idx];
+            if (!variant) return;
+            productArticle.querySelectorAll('.variants tbody tr').forEach(function (r) { r.classList.remove('is-selected'); });
+            row.classList.add('is-selected');
+            if (priceEl) priceEl.textContent = variant.priceLabel;
+            if (cta) cta.href = telegramHref(p, variant);
+            if (mediaEl) mediaEl.innerHTML = media(mediaFor(p, variant));
+          });
+        });
+      })
+      .catch(function () { /* без JS/API таблица исполнений остаётся статичной — цену и фото не переключить, но страница рабочая */ });
   }
 
   /* ── Форма заявки: состояние отправки ─────────────────────────────── */

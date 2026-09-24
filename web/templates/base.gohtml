@@ -34,7 +34,13 @@
 {{ template "content" . }}
 </main>
 {{ template "site-footer" . }}
-<div id="quick-view" class="overlay" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-label="Быстрый просмотр изделия"></div>
+<div id="quick-view" class="qv" hidden aria-hidden="true">
+  <div class="qv__backdrop" data-close></div>
+  <div class="qv__panel" role="dialog" aria-modal="true" aria-label="Быстрый просмотр изделия">
+    <button class="qv__close" type="button" data-close aria-label="Закрыть">×</button>
+    <div class="qv__scroll" data-qv-panel></div>
+  </div>
+</div>
 <script src="{{ asset "/static/js/app.js" }}" defer></script>
 </body>
 </html>

@@ -62,12 +62,20 @@ type Spec struct {
 	Value string `json:"value"`
 }
 
-// Variant — исполнение изделия: значения параметров в порядке OptionNames и
-// цена. Price == 0 означает, что цена ещё не согласована.
+// Variant — исполнение изделия: значения параметров в порядке OptionNames,
+// цена и, если это исполнение выглядит иначе (другой размер, другой цвет) —
+// собственная фотография. Price == 0 означает, что цена ещё не согласована.
+// Image == "" означает, что у исполнения нет отдельного фото — карточка
+// показывает фото изделия по умолчанию (или плашку, если и его ещё нет).
 type Variant struct {
 	Values []string `json:"values"`
 	Price  int      `json:"price"`
+	Image  string   `json:"image"`
+	Alt    string   `json:"alt"`
 }
+
+// HasPhoto сообщает, есть ли у исполнения собственная фотография.
+func (v Variant) HasPhoto() bool { return v.Image != "" }
 
 // PriceLabel — цена исполнения: «1 400 ₽» или XXX, если цены пока нет.
 func (v Variant) PriceLabel() string {
@@ -149,35 +157,25 @@ var products = []Product{
 		Specs: baseSpecs(Spec{Name: "Размеры", Value: "Малый, большой"}),
 	},
 	{
-		Slug: "sumka-mehanika-l", Art: "KP—05", Name: "Сумка механика, размер L", Category: "bags",
-		Kicker: "Размер L", Featured: true,
-		Desc: "Три цвета, наполнение под ваш комплект.",
-		Detail: "Шьём под конкретный набор инструмента и расходников. Габариты, число " +
-			"отделений и раскладку карманов согласуем до пошива — по фотографиям и размерам " +
-			"вашего комплекта.",
+		Slug: "sumka-mehanika", Art: "KP—05", Name: "Сумка механика", Category: "bags",
+		Kicker: "Механик", Featured: true,
+		Desc: "Два размера, три цвета, наполнение под ваш комплект.",
+		Detail: "Шьём под конкретный набор инструмента и расходников. Два размера — L и " +
+			"увеличенный XL под больший комплект. Число отделений и раскладку карманов " +
+			"согласуем до пошива — по фотографиям и размерам вашего комплекта.",
 		InStock:     true,
-		OptionNames: []string{"Цвет"},
+		OptionNames: []string{"Размер", "Цвет"},
+		// У исполнений разных размеров и цветов будут разные фотографии — поле
+		// Image заполним, когда будет съёмка каждого варианта.
 		Variants: []Variant{
-			{Values: []string{"Красная"}},
-			{Values: []string{"Зелёная"}},
-			{Values: []string{"Чёрная"}},
+			{Values: []string{"L", "Красная"}},
+			{Values: []string{"L", "Зелёная"}},
+			{Values: []string{"L", "Чёрная"}},
+			{Values: []string{"XL", "Красная"}},
+			{Values: []string{"XL", "Зелёная"}},
+			{Values: []string{"XL", "Чёрная"}},
 		},
-		Specs: baseSpecs(Spec{Name: "Размер", Value: "L"}, Spec{Name: "Срок", Value: "Согласуем при заказе"}),
-	},
-	{
-		Slug: "sumka-mehanika-xl", Art: "KP—06", Name: "Сумка механика, размер XL", Category: "bags",
-		Kicker: "Размер XL",
-		Desc:   "Та же сумка на больший комплект.",
-		Detail: "Увеличенная версия сумки механика — под расширенный набор инструмента и " +
-			"расходников. Раскладку карманов и отделений согласуем до пошива.",
-		InStock:     true,
-		OptionNames: []string{"Цвет"},
-		Variants: []Variant{
-			{Values: []string{"Красная"}},
-			{Values: []string{"Зелёная"}},
-			{Values: []string{"Чёрная"}},
-		},
-		Specs: baseSpecs(Spec{Name: "Размер", Value: "XL"}, Spec{Name: "Срок", Value: "Согласуем при заказе"}),
+		Specs: baseSpecs(Spec{Name: "Размеры", Value: "L, XL"}, Spec{Name: "Срок", Value: "Согласуем при заказе"}),
 	},
 	{
 		Slug: "kosmetichka-monitor", Art: "KP—07", Name: "Косметичка для монитора", Category: "bags",

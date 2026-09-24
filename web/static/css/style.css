@@ -457,6 +457,7 @@ p { max-width: 60ch; }
 
 .product { max-width: var(--content-max); margin-inline: auto; padding-inline: var(--margin); display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-8); padding-bottom: var(--space-9); }
 .product__figure { border-radius: var(--radius); overflow: hidden; background: var(--paper); aspect-ratio: 4 / 5; }
+.product__media { width: 100%; height: 100%; }
 .product__img { width: 100%; height: 100%; object-fit: cover; }
 .product__caption { padding: var(--space-3); font-size: var(--fs-small); color: var(--text-muted); }
 .product__tag { margin-bottom: var(--space-3); }
@@ -481,24 +482,75 @@ p { max-width: 60ch; }
 .specs dt { color: var(--text-muted); }
 .specs dd { margin: 0; text-align: right; }
 
-/* ── Быстрый просмотр (drawer) ──────────────────────────────────────── */
-.overlay {
+/* ── Быстрый просмотр (модальное окно) ──────────────────────────────── */
+.qv {
   position: fixed;
   inset: 0;
   z-index: 60;
-  background: var(--bg);
-  overflow-y: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-5);
 }
-.overlay[hidden] { display: none; }
-.overlay .bar { max-width: var(--content-max); margin-inline: auto; padding-inline: var(--margin); }
-.overlay .product { padding-top: var(--space-6); }
-@media (min-width: 768px) {
-  .overlay {
-    left: auto;
-    width: min(720px, 92vw);
-    box-shadow: -24px 0 48px rgba(0,0,0,.4);
-  }
-  .overlay .product { grid-template-columns: 1fr; max-width: none; }
+.qv[hidden] { display: none; }
+.qv__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 10, 10, .64);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: qv-backdrop-in var(--base) var(--ease);
+}
+.qv__panel {
+  position: relative;
+  width: min(960px, 100%);
+  max-height: min(88vh, 920px);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 32px 64px rgba(0, 0, 0, .5);
+  animation: qv-panel-in var(--base) var(--ease);
+}
+.qv__close {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+  z-index: 2;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  line-height: 1;
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  transition: background-color var(--fast) var(--ease), color var(--fast) var(--ease), border-color var(--fast) var(--ease);
+}
+.qv__close:hover { background: var(--accent); color: var(--ink); border-color: var(--accent); }
+.qv__scroll {
+  overflow-y: auto;
+  padding: var(--space-8) var(--space-6) var(--space-6);
+}
+.qv__scroll .product { padding: 0; margin: 0; max-width: none; }
+@media (max-width: 767px) {
+  .qv { padding: 0; }
+  .qv__panel { width: 100%; height: 100%; max-height: none; border-radius: 0; }
+  .qv__scroll { padding: var(--space-8) var(--margin) var(--space-6); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .qv__backdrop, .qv__panel { animation: none; }
+}
+@keyframes qv-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes qv-panel-in {
+  from { opacity: 0; transform: scale(.96) translateY(12px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 /* ── Каталог: контакты в конце страницы ─────────────────────────────── */
@@ -549,7 +601,6 @@ p { max-width: 60ch; }
   .contacts { grid-template-columns: minmax(0, 1fr); }
   .product { grid-template-columns: minmax(0, 1fr); }
   .icon-btn--mobile { width: 36px; height: 36px; }
-  .overlay { width: 100vw; }
   .site-footer__nav { width: 100%; gap: var(--space-4); }
 }
 

@@ -71,7 +71,7 @@ func TestIndexRendersFeaturedCatalogAndContacts(t *testing.T) {
 	body := get(t, newTestServer(t, nil), "/").Body.String()
 
 	for _, want := range []string{
-		"Все для СЪЕМОК", "Каталог", "Все 18 товаров →", "Показать больше",
+		"Все для СЪЕМОК", "Каталог", "Все 17 товаров →", "Показать больше",
 		`class="hero__copy"`,
 		"https://t.me/suvorov_dmitry", "Voros@list.ru",
 		// html/template кодирует «+» в тексте и атрибутах как &#43; — браузер
@@ -128,7 +128,7 @@ func TestCatalogShowsFullListWithoutRevealToggle(t *testing.T) {
 
 func TestCatalogUnknownFilterFallsBackToWholeCatalog(t *testing.T) {
 	body := get(t, newTestServer(t, nil), "/catalog?cat=выдумка").Body.String()
-	if !strings.Contains(body, "18 товаров") {
+	if !strings.Contains(body, "17 товаров") {
 		t.Error("неизвестная категория не свелась к полному каталогу")
 	}
 }
@@ -282,7 +282,7 @@ func TestAPISingleProduct(t *testing.T) {
 }
 
 func TestAPIMarksUnknownPriceAsXXX(t *testing.T) {
-	rec := get(t, newTestServer(t, nil), "/api/products/sumka-mehanika-l")
+	rec := get(t, newTestServer(t, nil), "/api/products/sumka-mehanika")
 
 	var p productDTO
 	if err := json.Unmarshal(rec.Body.Bytes(), &p); err != nil {
