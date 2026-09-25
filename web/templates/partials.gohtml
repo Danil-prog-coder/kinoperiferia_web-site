@@ -10,6 +10,9 @@
       <a href="/#contacts">Контакты</a>
     </nav>
     <div class="masthead__actions">
+      <a class="cart-link" href="/order" aria-label="Корзина заявки">
+        Корзина<span class="cart-link__count" data-cart-count hidden>0</span>
+      </a>
       <a class="btn btn--solid btn--sm" href="{{ .Site.Telegram }}" target="_blank" rel="noopener noreferrer">Написать в Telegram</a>
       <a class="icon-btn icon-btn--mobile" href="{{ .Site.Telegram }}" target="_blank" rel="noopener noreferrer" aria-label="Написать в Telegram">↗</a>
       <button class="burger" type="button" data-menu-toggle aria-expanded="false" aria-controls="mobile-menu" aria-label="Открыть меню">
@@ -25,6 +28,7 @@
     <a href="/#about">Производство</a>
     <a href="/#delivery">Доставка</a>
     <a href="/#contacts">Контакты</a>
+    <a href="/order">Корзина<span class="cart-link__count" data-cart-count hidden>0</span></a>
   </nav>
   <a class="btn btn--solid" href="{{ .Site.Telegram }}" target="_blank" rel="noopener noreferrer">Написать в Telegram ↗</a>
 </div>
@@ -106,7 +110,7 @@
 
 {{- define "order-form" -}}
 {{- if .Submitted -}}
-<div class="notice">
+<div class="notice" data-order-submitted>
   Заявка принята. Свяжемся по указанному контакту — обычно в течение рабочего дня.
   <span class="notice__id">Номер заявки: {{ .OrderID }}</span>
 </div>
@@ -134,7 +138,10 @@
     {{- with index .Errors "contact" }}<span class="field__error">{{ . }}</span>{{ end }}
   </div>
 
-  <div class="field">
+  <div class="cart" data-cart-list hidden></div>
+  <input type="hidden" name="items" data-cart-items-input value="">
+
+  <div class="field" data-product-field>
     <label for="product">Изделие</label>
     <select id="product" name="product">
       <option value="">Кастомное изделие / не выбрано</option>
@@ -143,6 +150,7 @@
       <option value="{{ .Slug }}"{{ if eq .Slug $selected }} selected{{ end }}>{{ .Art }} · {{ .Name }} — {{ .PriceLabel }}</option>
       {{- end }}
     </select>
+    <span class="field__hint">Или добавьте несколько изделий в корзину прямо из каталога.</span>
   </div>
 
   <div class="field{{ if index .Errors "message" }} field--invalid{{ end }}">

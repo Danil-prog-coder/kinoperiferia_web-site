@@ -291,23 +291,15 @@ func (s *Server) handleProduct(w http.ResponseWriter, r *http.Request) {
 		pageBase: s.base(r, "catalog",
 			p.Name+" — "+p.PriceLabel()+" — "+site.Brand,
 			p.Detail),
-		Product:      p,
-		Related:      related,
-		BackURL:      "/catalog?cat=" + p.Category,
-		TelegramHref: telegramPrefilled(p),
+		Product: p,
+		Related: related,
+		BackURL: "/catalog?cat=" + p.Category,
 	}
 	page.OGType = "product"
 	page.OGImage = p.Image
 	page.JSONLD = s.productJSONLD(p)
 
 	s.render(w, r, "product", http.StatusOK, page)
-}
-
-// telegramPrefilled собирает ссылку на Telegram с уже готовым текстом
-// сообщения — «Уточнить и заказать» не должно начинаться с чистого листа.
-func telegramPrefilled(p catalog.Product) string {
-	text := fmt.Sprintf("Здравствуйте! Интересует %s (%s).", p.Name, p.Art)
-	return site.Telegram + "?text=" + url.QueryEscape(text)
 }
 
 // ── Заявка ─────────────────────────────────────────────────────────────
@@ -401,6 +393,11 @@ func (s *Server) handleOrderSubmit(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Корзина приходит скрытым полем items — JSON-массив, который собирает
+	// JS на странице заявки. Каждую позицию сверяем с каталогом по тем же
+	// причинам, что и одиночное изделие выше.
+	items := parseOrderItems(r.PostFormValue("items"))
+
 	var headers []*multipart.FileHeader
 	if r.MultipartForm != nil {
 		headers = r.MultipartForm.File["files"]
@@ -427,6 +424,7 @@ func (s *Server) handleOrderSubmit(w http.ResponseWriter, r *http.Request) {
 		Contact: page.Contact.Form.Contact,
 		Product: page.Contact.Form.Product,
 		Message: page.Contact.Form.Message,
+		Items:   items,
 	}, files)
 	if err != nil {
 		var verr *orders.ValidationError
@@ -444,10 +442,44 @@ func (s *Server) handleOrderSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.log.Info("новая заявка", "id", order.ID, "product", order.Product, "files", len(order.Files))
+	s.log.Info("новая заявка", "id", order.ID, "product", order.Product, "items", len(order.Items), "files", len(order.Files))
 	page.Contact.Submitted = true
 	page.Contact.OrderID = order.ID
 	s.render(w, r, "order", http.StatusOK, page)
+}
+
+// parseOrderItems разбирает корзину, присланную скрытым полем формы как
+// JSON-массив. Некорректный JSON и позиции с неизвестным slug молча
+// отбрасываются — то же правило, что и для одиночного поля product: со
+// страницы приходят только реальные slug'и каталога, всё остальное — либо
+// баг на клиенте, либо попытка подделать запрос.
+func parseOrderItems(raw string) []orders.OrderItem {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil
+	}
+	var in []struct {
+		Slug    string `json:"slug"`
+		Variant string `json:"variant"`
+		Qty     int    `json:"qty"`
+	}
+	if err := json.Unmarshal([]byte(raw), &in); err != nil {
+		return nil
+	}
+	out := make([]orders.OrderItem, 0, len(in))
+	for _, it := range in {
+		p, ok := catalog.BySlug(strings.TrimSpace(it.Slug))
+		if !ok {
+			continue
+		}
+		out = append(out, orders.OrderItem{
+			Slug:    p.Slug,
+			Name:    p.Name,
+			Variant: it.Variant,
+			Qty:     it.Qty,
+		})
+	}
+	return out
 }
 
 // ── JSON API ───────────────────────────────────────────────────────────

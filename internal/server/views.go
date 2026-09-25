@@ -111,10 +111,9 @@ type catalogPage struct {
 // productPage — страница изделия.
 type productPage struct {
 	pageBase
-	Product      catalog.Product
-	Related      []catalog.Product
-	BackURL      string
-	TelegramHref string
+	Product catalog.Product
+	Related []catalog.Product
+	BackURL string
 }
 
 // orderForm — значения полей формы заявки, которые возвращаются пользователю

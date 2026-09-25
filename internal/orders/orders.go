@@ -26,11 +26,24 @@ type Order struct {
 	CreatedAt time.Time `json:"createdAt"`
 	Name      string    `json:"name"`
 	Contact   string    `json:"contact"`
-	Product   string    `json:"product"` // slug изделия или пусто для заявки на кастом
+	Product   string    `json:"product"` // slug изделия — заявка на одну позицию без корзины
 	Message   string    `json:"message"`
+	// Items — корзина: несколько изделий с исполнением и количеством каждого.
+	// Заполняется вместо Product, когда покупатель добавил в заявку больше
+	// одной позиции или указал количество.
+	Items []OrderItem `json:"items,omitempty"`
 	// Files — пути приложенных файлов относительно каталога хранилища
 	// (data/uploads/<ID>/<имя>), пусто, если ничего не приложено.
 	Files []string `json:"files,omitempty"`
+}
+
+// OrderItem — одна позиция корзины: изделие, выбранное исполнение (если
+// было) и количество.
+type OrderItem struct {
+	Slug    string `json:"slug"`
+	Name    string `json:"name"`
+	Variant string `json:"variant,omitempty"`
+	Qty     int    `json:"qty"`
 }
 
 // Ограничения на длину полей: заявка приходит из открытой формы, поэтому
@@ -40,6 +53,11 @@ const (
 	maxContact = 120
 	maxMessage = 2000
 	maxProduct = 80
+
+	// maxItems — сколько разных позиций можно добавить в корзину заявки.
+	maxItems = 30
+	// maxQty — максимальное количество одной позиции в заявке.
+	maxQty = 50
 
 	// MaxFiles и MaxFileSize — лимиты вложений формы заявки: не больше 5
 	// файлов, каждый до 10 МБ.
@@ -107,6 +125,24 @@ func (o *Order) Validate() error {
 	}
 	if utf8.RuneCountInString(o.Product) > maxProduct {
 		fields["product"] = "Неизвестное изделие"
+	}
+	if len(o.Items) > maxItems {
+		fields["items"] = fmt.Sprintf("Не больше %d позиций за раз", maxItems)
+	}
+	for i := range o.Items {
+		it := &o.Items[i]
+		it.Slug = strings.TrimSpace(it.Slug)
+		it.Name = strings.TrimSpace(it.Name)
+		it.Variant = strings.TrimSpace(it.Variant)
+		switch {
+		case it.Qty < 1:
+			it.Qty = 1
+		case it.Qty > maxQty:
+			it.Qty = maxQty
+		}
+		if it.Slug == "" || utf8.RuneCountInString(it.Slug) > maxProduct {
+			fields["items"] = "В корзине есть неизвестное изделие"
+		}
 	}
 	if len(fields) > 0 {
 		return &ValidationError{Fields: fields}
@@ -285,6 +321,17 @@ func (t *TelegramNotifier) Notify(o Order, files []UploadedFile) error {
 	b.WriteString("Контакт: " + o.Contact + "\n")
 	if o.Product != "" {
 		b.WriteString("Изделие: " + o.Product + "\n")
+	}
+	if len(o.Items) > 0 {
+		b.WriteString("Позиции:\n")
+		for i, it := range o.Items {
+			line := fmt.Sprintf("%d. %s", i+1, it.Name)
+			if it.Variant != "" {
+				line += " — " + it.Variant
+			}
+			line += fmt.Sprintf(" × %d", it.Qty)
+			b.WriteString(line + "\n")
+		}
 	}
 	if o.Message != "" {
 		b.WriteString("Сообщение: " + o.Message)

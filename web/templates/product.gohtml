@@ -64,8 +64,15 @@
       <div><dt>{{ .Name }}</dt><dd>{{ .Value }}</dd></div>
       {{- end }}
     </dl>
+    <div class="product__cart-row" data-add-to-cart-row>
+      <div class="qty" data-qty>
+        <button type="button" data-qty-dec aria-label="Меньше">−</button>
+        <span class="qty__value" data-qty-value>1</span>
+        <button type="button" data-qty-inc aria-label="Больше">+</button>
+      </div>
+      <button class="btn btn--dark" type="button" data-add-to-cart>В корзину</button>
+    </div>
     <div class="product__actions">
-      <a class="btn btn--solid" data-telegram-cta href="{{ .TelegramHref }}" target="_blank" rel="noopener noreferrer">Уточнить наличие и заказать ↗</a>
       <a class="btn btn--ghost" href="/order?product={{ .Product.Slug }}">Оставить заявку</a>
     </div>
   </div>

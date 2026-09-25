@@ -196,13 +196,6 @@ func TestProductPageWithoutPhotoShowsPlaceholder(t *testing.T) {
 	}
 }
 
-func TestProductPageTelegramLinkIsPrefilled(t *testing.T) {
-	body := get(t, newTestServer(t, nil), "/product/cinesaddle").Body.String()
-	if !strings.Contains(body, "t.me/suvorov_dmitry?text=") {
-		t.Error("ссылка на Telegram не содержит предзаполненного текста")
-	}
-}
-
 func TestCanonicalAndSitemapUseBaseURL(t *testing.T) {
 	s := newTestServer(t, nil)
 
