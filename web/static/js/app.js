@@ -278,43 +278,6 @@
     }
   }
 
-  /* ── Стеклянный индикатор меню ─────────────────────────────────────
-     Одна «капля» скользит под активным пунктом (и за курсором), как в
-     таб-баре iOS. Пружина — в CSS (.nav__indicator). */
-  var navEl = document.querySelector('.masthead .nav');
-  if (navEl) {
-    var navLinks = Array.prototype.slice.call(navEl.querySelectorAll('a'));
-    var indicator = document.createElement('span');
-    indicator.className = 'nav__indicator';
-    indicator.setAttribute('aria-hidden', 'true');
-    navEl.insertBefore(indicator, navEl.firstChild);
-    var hovered = null;
-
-    var activeLink = function () {
-      return navEl.querySelector('a[aria-current], a.is-active');
-    };
-    var placeIndicator = function () {
-      var target = hovered || activeLink();
-      if (!target) { indicator.style.opacity = '0'; return; }
-      indicator.style.opacity = '1';
-      indicator.style.width = target.offsetWidth + 'px';
-      indicator.style.height = target.offsetHeight + 'px';
-      indicator.style.transform = 'translate(' + target.offsetLeft + 'px,' + target.offsetTop + 'px)';
-    };
-
-    placeIndicator();
-    /* Включаем анимацию только после первой расстановки — без «пролёта» с нуля. */
-    window.requestAnimationFrame(function () { indicator.classList.add('is-ready'); });
-
-    navLinks.forEach(function (a) {
-      a.addEventListener('pointerenter', function () { hovered = a; placeIndicator(); });
-    });
-    navEl.addEventListener('pointerleave', function () { hovered = null; placeIndicator(); });
-    new MutationObserver(placeIndicator).observe(navEl, { attributes: true, subtree: true, attributeFilter: ['class', 'aria-current'] });
-    window.addEventListener('resize', placeIndicator);
-    if (document.fonts && document.fonts.ready) document.fonts.ready.then(placeIndicator);
-  }
-
   /* ── Сортировка: отправляем форму сразу при выборе (JSON API/легаси) ─ */
   var sortSelect = document.getElementById('sort');
   if (sortSelect && sortSelect.form) {
