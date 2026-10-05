@@ -178,6 +178,56 @@
     window.addEventListener('scroll', syncHeader, { passive: true });
   }
 
+  /* ── Скользящий индикатор меню (как таб-бар iOS) ───────────────────── */
+  var mainNav = document.querySelector('.masthead .nav');
+  if (mainNav) {
+    var indicator = document.createElement('span');
+    indicator.className = 'nav__indicator';
+    indicator.setAttribute('aria-hidden', 'true');
+    mainNav.appendChild(indicator);
+
+    var navTarget = null;
+    /* classList.add/remove пишут атрибут class даже без изменений и будят
+       MutationObserver — поэтому трогаем класс, только если он меняется. */
+    var setVisible = function (on) {
+      if (indicator.classList.contains('is-visible') !== on) indicator.classList.toggle('is-visible', on);
+    };
+    var placeIndicator = function (link) {
+      if (!link || !mainNav.offsetWidth) {
+        setVisible(false);
+        return;
+      }
+      indicator.style.width = link.offsetWidth + 'px';
+      indicator.style.height = link.offsetHeight + 'px';
+      indicator.style.transform = 'translate(' + link.offsetLeft + 'px,' + link.offsetTop + 'px)';
+      setVisible(true);
+    };
+    var syncIndicator = function () {
+      placeIndicator(navTarget || mainNav.querySelector('a[aria-current], a.is-active'));
+    };
+
+    mainNav.addEventListener('pointerover', function (e) {
+      var a = e.target.closest('a');
+      if (a && mainNav.contains(a)) { navTarget = a; syncIndicator(); }
+    });
+    mainNav.addEventListener('pointerleave', function () {
+      navTarget = null;
+      syncIndicator();
+    });
+    new MutationObserver(syncIndicator).observe(mainNav, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['class', 'aria-current']
+    });
+    window.addEventListener('resize', syncIndicator);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(syncIndicator);
+
+    syncIndicator();
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () { indicator.classList.add('is-ready'); });
+    });
+  }
+
   /* ── Мобильное меню ────────────────────────────────────────────────── */
   var menuToggle = document.querySelector('[data-menu-toggle]');
   var mobileMenu = document.querySelector('[data-mobile-menu]');

@@ -60,7 +60,9 @@
   --fast: 150ms;
   --base: 250ms;
 
-  --radius: 4px;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --radius-lg: 28px;
   --header-h: 72px;
 }
 
@@ -682,11 +684,250 @@ p { max-width: 60ch; }
 html { scroll-behavior: smooth; }
 section[id] { scroll-margin-top: var(--header-h); }
 
-/* View Transitions: единственный содержательный переход — карточка ↔
-   быстрый просмотр (раздел 7 ТЗ). Нативный переход между ЛЮБЫМИ страницами
-   («@view-transition: navigation auto») сюда сознательно не включён — он
-   шире, чем просил раздел 7 (только главная ↔ /catalog), и его отменённый
-   промис («Transition was skipped») нельзя перехватить из JS. */
+/* View Transitions: карточка ↔ быстрый просмотр (kp-media) и переходы между
+   страницами (@view-transition в блоке «iOS liquid glass» ниже). */
 @media (prefers-reduced-motion: no-preference) {
   ::view-transition-group(kp-media) { animation-duration: 250ms; animation-timing-function: var(--ease); }
+}
+
+/* ── Liquid glass + скругления ───────────────────────────────────────── */
+:root {
+  --glass-bg: linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.03));
+  --glass-bg-strong: linear-gradient(135deg, rgba(255,255,255,.14), rgba(255,255,255,.05));
+  --glass-border: rgba(255, 255, 255, .16);
+  --glass-blur: blur(18px) saturate(180%);
+  --glass-shadow:
+    inset 0 1px 0 rgba(255,255,255,.28),
+    inset 0 -1px 0 rgba(255,255,255,.04),
+    0 8px 32px rgba(0,0,0,.35);
+}
+
+/* Фон, сквозь который «просвечивает» стекло */
+body {
+  background:
+    radial-gradient(60vw 50vh at 8% 4%, rgba(242,194,0,.16), transparent 60%),
+    radial-gradient(50vw 50vh at 95% 35%, rgba(90,120,255,.14), transparent 60%),
+    radial-gradient(55vw 50vh at 20% 95%, rgba(255,90,140,.10), transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
+}
+
+.masthead[data-scrolled],
+.mobile-menu,
+.btn--ghost,
+.tab,
+.icon-btn--mobile,
+.qty,
+.notice,
+.cart-item__media,
+.qv__close,
+.field input[type="text"], .field textarea, .field select, .field input[type="file"] {
+  background: var(--glass-bg);
+  border-color: var(--glass-border);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-shadow);
+}
+
+.masthead[data-scrolled] {
+  background: var(--glass-bg-strong);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  border-bottom-color: var(--glass-border);
+}
+.mobile-menu { background: rgba(18,18,18,.72); border-radius: 0; box-shadow: none; }
+
+.qv__panel {
+  background: var(--glass-bg-strong), rgba(20,20,20,.55);
+  border-color: var(--glass-border);
+  border-radius: var(--radius-lg);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  backdrop-filter: blur(28px) saturate(180%);
+  box-shadow: var(--glass-shadow), 0 32px 64px rgba(0,0,0,.5);
+}
+.qv__backdrop { background: rgba(10,10,10,.5); }
+@media (max-width: 767px) { .qv__panel { border-radius: 0; } }
+
+.btn--ghost:hover, .tab:hover { background: var(--glass-bg-strong); border-color: rgba(255,255,255,.3); }
+.btn--solid, .tab[aria-current] {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.55), inset 0 -2px 6px rgba(0,0,0,.12), 0 6px 20px rgba(242,194,0,.25);
+}
+.btn--dark { box-shadow: inset 0 1px 0 rgba(255,255,255,.18); }
+
+.field input:focus, .field textarea:focus, .field select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* Скругления */
+.btn, .tab, .qty, .cart-link__count { border-radius: 999px; }
+.qv__close { border-radius: 50%; }
+.field input[type="text"], .field textarea, .field select, .field input[type="file"] { border-radius: var(--radius-sm); }
+.hero__figure .frame, .card__media, .product__figure, .ph { border-radius: var(--radius-lg); }
+.cart-item__media { border-radius: var(--radius-sm); }
+.notice { border-radius: var(--radius); }
+.variants tbody tr:hover, .variants tbody tr.is-selected { background: var(--glass-bg); }
+.custom { border-radius: var(--radius-lg); margin-inline: var(--space-4); }
+.skip-link { border-radius: 0 0 var(--radius-sm) var(--radius-sm); }
+@media (max-width: 767px) { .custom { margin-inline: var(--space-2); border-radius: var(--radius); } }
+
+/* ══ iOS liquid glass: пружина, кромка, плавные переходы ═════════════════ */
+:root {
+  --spring: cubic-bezier(.34, 1.4, .64, 1);
+  --ease-out: cubic-bezier(.22, 1, .36, 1);
+
+  --glass-bg: linear-gradient(135deg, rgba(255,255,255,.05), rgba(255,255,255,.01));
+  --glass-bg-strong: linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.03));
+  --glass-border: rgba(255, 255, 255, .07);
+  --glass-blur: blur(22px) saturate(190%);
+  /* Объём только через inset: блик сверху-слева, слабый снизу-справа, свечение снизу */
+  --glass-shadow:
+    inset 1px 1px 1px -.5px rgba(255,255,255,.25),
+    inset -1px -1px 1px -.5px rgba(255,255,255,.08),
+    inset 0 -8px 16px -12px rgba(255,255,255,.10);
+}
+@supports (transition-timing-function: linear(0, 1)) {
+  :root {
+    --spring: linear(0, .009, .035 2.1%, .141 4.4%, .723 12.9%, .938 16.7%, 1.017 19.4%, 1.077 22.4%, 1.121 25.8%, 1.149 29.5%, 1.159 33.7%, 1.151 38.2%, 1.126 43.4%, 1.012 61.4%, .983 69.3%, .974 76.8%, .985 85.7%, 1);
+  }
+}
+
+/* Стекло без внешних теней: у элементов с backdrop-filter только inset */
+.mobile-menu, .qv__panel { box-shadow: var(--glass-shadow); }
+
+/* Жёлтые кнопки: янтарный градиент и inset-блики */
+.btn--solid, .tab[aria-current] {
+  background: linear-gradient(180deg, #ffd84a 0%, #f2c200 55%, #e0a800 100%);
+  box-shadow:
+    inset 0 1.5px 0 rgba(255,255,255,.65),
+    inset 0 -2px 4px rgba(150,90,0,.3);
+}
+.btn--solid:hover { background: linear-gradient(180deg, #ffe066 0%, #ffcf1f 55%, #eab308 100%); }
+
+/* ── Шапка: плавающая стеклянная «таблетка» ──────────────────────────── */
+.masthead,
+.masthead[data-scrolled] {
+  background: none;
+  border-bottom-color: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* Размытие за шапкой: на всю ширину окна, нижний край плавно растворяется */
+.masthead::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: calc(var(--header-h) + 16px);
+  z-index: -1;
+  background: linear-gradient(to bottom, rgba(18,18,18,.78), rgba(18,18,18,.45));
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  backdrop-filter: blur(18px) saturate(160%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 62%, transparent);
+  mask-image: linear-gradient(to bottom, #000 62%, transparent);
+  opacity: 0;
+  transition: opacity .35s var(--ease-out);
+  pointer-events: none;
+}
+.masthead[data-scrolled]::before { opacity: 1; }
+
+/* ── Скользящий индикатор меню ───────────────────────────────────────── */
+.masthead .nav { position: relative; gap: var(--space-2); }
+.nav a {
+  position: relative;
+  z-index: 1;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: none;
+  box-shadow: none;
+}
+.nav__indicator {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 0;
+  width: 0;
+  height: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.03));
+  box-shadow:
+    inset 1px 1px 1px -.5px rgba(255,255,255,.3),
+    inset -1px -1px 1px -.5px rgba(255,255,255,.1);
+  opacity: 0;
+  pointer-events: none;
+  will-change: transform, width, height;
+  view-transition-name: kp-nav-ind;
+}
+.nav__indicator.is-ready {
+  transition: transform 650ms var(--spring), width 650ms var(--spring), height 650ms var(--spring), opacity .3s var(--ease-out);
+}
+.nav__indicator.is-visible { opacity: 1; }
+
+/* ── Стеклянные плашки: футер, карточки, фото ────────────────────────── */
+.site-footer {
+  margin-block: var(--space-6) var(--space-4);
+  max-width: calc(var(--content-max) - var(--margin));
+  width: calc(100% - var(--margin));
+  padding: var(--space-8) var(--margin);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-shadow);
+}
+.card__media, .hero__figure .frame, .product__figure, .ph, .cart-item__media {
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+.card { transition: transform .6s var(--spring); }
+.card:hover { transform: translateY(-3px); }
+.card__img { transition: transform .8s var(--spring); }
+.card:hover .card__img { transform: scale(1.03); }
+
+/* Нажатие */
+.btn, .tab, .icon-btn--mobile, .burger, .qv__close {
+  transition: transform .45s var(--spring), background-color var(--fast) var(--ease), color var(--fast) var(--ease), border-color var(--fast) var(--ease);
+}
+.btn:active, .tab:active, .icon-btn--mobile:active, .burger:active, .qv__close:active { transform: scale(.95); transition-duration: .12s; }
+
+/* Мобильное меню и быстрый просмотр */
+@keyframes kp-menu-in { from { opacity: 0; transform: scale(1.04); } to { opacity: 1; transform: none; } }
+@keyframes kp-item-in { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+@keyframes kp-panel-spring { from { opacity: 0; transform: scale(.9) translateY(24px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: no-preference) {
+  .mobile-menu { animation: kp-menu-in .5s var(--ease-out); }
+  .mobile-menu nav a, .mobile-menu .btn { animation: kp-item-in .7s var(--spring) backwards; }
+  .mobile-menu nav a:nth-child(1) { animation-delay: .05s; }
+  .mobile-menu nav a:nth-child(2) { animation-delay: .10s; }
+  .mobile-menu nav a:nth-child(3) { animation-delay: .15s; }
+  .mobile-menu nav a:nth-child(4) { animation-delay: .20s; }
+  .mobile-menu nav a:nth-child(5) { animation-delay: .25s; }
+  .mobile-menu nav a:nth-child(n+6) { animation-delay: .30s; }
+  .mobile-menu .btn { animation-delay: .35s; }
+  .qv__panel { animation: kp-panel-spring .6s var(--spring); }
+}
+
+/* ── Появление блоков при скролле (чистый CSS) ───────────────────────── */
+@keyframes kp-reveal {
+  from { opacity: 0; transform: translateY(28px); filter: blur(8px); }
+  to { opacity: 1; transform: none; filter: blur(0); }
+}
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .section__head, .card, .steps li, .facts > *, .case, .pitch > *, .contact-info > *, .link-list a {
+      animation: kp-reveal linear backwards;
+      animation-timeline: view();
+      animation-range: entry 0% entry 55%;
+    }
+  }
+}
+
+/* ── Переходы между страницами ───────────────────────────────────────── */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition { navigation: auto; }
+
+  @keyframes kp-page-out { to { opacity: 0; transform: translateY(-10px); filter: blur(6px); } }
+  @keyframes kp-page-in { from { opacity: 0; transform: translateY(16px); filter: blur(8px); } }
+  ::view-transition-old(root) { animation: kp-page-out 220ms var(--ease-out) both; }
+  ::view-transition-new(root) { animation: kp-page-in 520ms var(--ease-out) both; }
+  ::view-transition-group(kp-nav-ind) { animation-duration: 600ms; animation-timing-function: var(--spring); }
 }
