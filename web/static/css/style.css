@@ -60,7 +60,9 @@
   --fast: 150ms;
   --base: 250ms;
 
-  --radius: 4px;
+  --radius: 16px;
+  --radius-sm: 10px;
+  --radius-lg: 28px;
   --header-h: 72px;
 }
 
@@ -682,11 +684,285 @@ p { max-width: 60ch; }
 html { scroll-behavior: smooth; }
 section[id] { scroll-margin-top: var(--header-h); }
 
-/* View Transitions: единственный содержательный переход — карточка ↔
-   быстрый просмотр (раздел 7 ТЗ). Нативный переход между ЛЮБЫМИ страницами
-   («@view-transition: navigation auto») сюда сознательно не включён — он
-   шире, чем просил раздел 7 (только главная ↔ /catalog), и его отменённый
-   промис («Transition was skipped») нельзя перехватить из JS. */
+/* View Transitions: карточка ↔ быстрый просмотр (same-document) и, ниже в
+   «Liquid glass 2», плавный переход между страницами (cross-document). */
 @media (prefers-reduced-motion: no-preference) {
   ::view-transition-group(kp-media) { animation-duration: 250ms; animation-timing-function: var(--ease); }
 }
+
+/* ── Liquid glass + скругления ───────────────────────────────────────── */
+:root {
+  --glass-bg: linear-gradient(135deg, rgba(255,255,255,.10), rgba(255,255,255,.03));
+  --glass-bg-strong: linear-gradient(135deg, rgba(255,255,255,.14), rgba(255,255,255,.05));
+  --glass-border: rgba(255, 255, 255, .16);
+  --glass-blur: blur(18px) saturate(180%);
+  --glass-shadow:
+    inset 0 1px 0 rgba(255,255,255,.28),
+    inset 0 -1px 0 rgba(255,255,255,.04),
+    0 8px 32px rgba(0,0,0,.35);
+}
+
+/* Фон, сквозь который «просвечивает» стекло */
+body {
+  background:
+    radial-gradient(60vw 50vh at 8% 4%, rgba(242,194,0,.16), transparent 60%),
+    radial-gradient(50vw 50vh at 95% 35%, rgba(90,120,255,.14), transparent 60%),
+    radial-gradient(55vw 50vh at 20% 95%, rgba(255,90,140,.10), transparent 60%),
+    var(--bg);
+  background-attachment: fixed;
+}
+
+.mobile-menu,
+.btn--ghost,
+.tab,
+.icon-btn--mobile,
+.qty,
+.notice,
+.cart-item__media,
+.qv__close,
+.field input[type="text"], .field textarea, .field select, .field input[type="file"] {
+  background: var(--glass-bg);
+  border-color: var(--glass-border);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-shadow);
+}
+
+.mobile-menu { background: rgba(18,18,18,.72); border-radius: 0; box-shadow: none; }
+
+.qv__panel {
+  background: var(--glass-bg-strong), rgba(20,20,20,.55);
+  border-color: var(--glass-border);
+  border-radius: var(--radius-lg);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  backdrop-filter: blur(28px) saturate(180%);
+  box-shadow: var(--glass-shadow), 0 32px 64px rgba(0,0,0,.5);
+}
+.qv__backdrop { background: rgba(10,10,10,.5); }
+@media (max-width: 767px) { .qv__panel { border-radius: 0; } }
+
+.btn--ghost:hover, .tab:hover { background: var(--glass-bg-strong); border-color: rgba(255,255,255,.3); }
+.btn--solid, .tab[aria-current] {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.55), inset 0 -2px 6px rgba(0,0,0,.12), 0 6px 20px rgba(242,194,0,.25);
+}
+.btn--dark { box-shadow: inset 0 1px 0 rgba(255,255,255,.18); }
+
+.field input:focus, .field textarea:focus, .field select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* Скругления */
+.btn, .tab, .qty, .cart-link__count { border-radius: 999px; }
+.qv__close { border-radius: 50%; }
+.field input[type="text"], .field textarea, .field select, .field input[type="file"] { border-radius: var(--radius-sm); }
+.hero__figure .frame, .card__media, .product__figure, .ph { border-radius: var(--radius-lg); }
+.cart-item__media { border-radius: var(--radius-sm); }
+.notice { border-radius: var(--radius); }
+.variants tbody tr:hover, .variants tbody tr.is-selected { background: var(--glass-bg); }
+.custom { border-radius: var(--radius-lg); margin-inline: var(--space-4); }
+.skip-link { border-radius: 0 0 var(--radius-sm) var(--radius-sm); }
+@media (max-width: 767px) { .custom { margin-inline: var(--space-2); border-radius: var(--radius); } }
+
+/* ── Liquid glass 2: плавающая шапка, блики, пружины ─────────────────── */
+:root {
+  --spring: cubic-bezier(.34, 1.4, .64, 1);
+  --ease-out: cubic-bezier(.22, 1, .36, 1);
+  --glass-hi: linear-gradient(180deg, rgba(255,255,255,.22), rgba(255,255,255,0) 42%);
+}
+@supports (transition-timing-function: linear(0, 1)) {
+  :root {
+    --spring: linear(0, .009, .035 2.1%, .141, .281 6.7%, .723 12.9%, .938 16.7%, 1.017, 1.077, 1.121, 1.149 24.3%, 1.159, 1.163, 1.161, 1.154 29.9%, 1.129 32.8%, 1.051 39.6%, 1.017 43.1%, .991, .977 51%, .974 53.8%, .975 57.1%, .997 69.8%, 1.003 76.9%, 1.004 83.8%, 1);
+  }
+}
+
+/* Шапка: стеклянная «таблетка» проявляется плавно (opacity), а не
+   включается скачком. Blur живёт на псевдоэлементе. */
+.masthead, .masthead[data-scrolled] { border-bottom: 0; background: none; }
+.masthead::before {
+  content: "";
+  position: absolute;
+  inset: 8px calc(var(--margin) / 2);
+  z-index: -1;
+  border-radius: var(--radius-lg);
+  background: var(--glass-hi), var(--glass-bg-strong);
+  border: 1px solid var(--glass-border);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  backdrop-filter: blur(24px) saturate(190%);
+  box-shadow: var(--glass-shadow);
+  opacity: 0;
+  transform: translateY(-6px) scale(.985);
+  transition: opacity var(--base) var(--ease-out), transform 450ms var(--spring);
+  pointer-events: none;
+}
+.masthead[data-scrolled]::before { opacity: 1; transform: none; }
+.masthead__row { padding-inline: var(--space-4); }
+.nav { gap: var(--space-2); }
+.nav a { padding: 6px 14px; border-radius: 999px; transition: color var(--fast) var(--ease), background-color var(--base) var(--ease-out); }
+.nav a:hover { background: rgba(255,255,255,.08); }
+.nav a[aria-current], .nav a.is-active { background: rgba(255,255,255,.12); box-shadow: inset 0 1px 0 rgba(255,255,255,.22); }
+
+/* Блик по верхней кромке — «жидкая» кромка стекла */
+.btn--ghost, .tab, .qty, .notice, .cart-item__media, .qv__close { background-image: var(--glass-hi), var(--glass-bg); }
+
+/* Фотографии и плашки */
+.card__media, .product__figure, .hero__figure .frame {
+  border: 1px solid var(--glass-border);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.25), 0 12px 40px rgba(0,0,0,.35);
+  transition: transform 500ms var(--spring), box-shadow var(--base) var(--ease-out);
+}
+.card:hover .card__media { transform: translateY(-4px); box-shadow: inset 0 1px 0 rgba(255,255,255,.3), 0 20px 48px rgba(0,0,0,.45); }
+.card__img { transition: transform 700ms var(--ease-out); }
+.card:hover .card__img { transform: scale(1.04); }
+
+.site-footer {
+  margin: var(--space-6) auto var(--space-4);
+  max-width: calc(var(--content-max) - var(--margin));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  background: var(--glass-hi), var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-shadow);
+  padding-inline: var(--space-6);
+}
+@media (max-width: 767px) { .site-footer { margin-inline: var(--space-2); padding-inline: var(--space-4); } }
+
+.cart-link__count { box-shadow: inset 0 1px 0 rgba(255,255,255,.55), 0 4px 12px rgba(242,194,0,.3); }
+
+/* Нажатие: пружинистый отклик, как у контролов iOS */
+.btn, .tab, .qty, .icon-btn--mobile, .burger, .qv__close, .card {
+  transition-property: background-color, color, border-color, box-shadow, transform;
+  transition-duration: var(--fast), var(--fast), var(--fast), var(--base), 500ms;
+  transition-timing-function: var(--ease), var(--ease), var(--ease), var(--ease-out), var(--spring);
+}
+.btn:hover { transform: translateY(-1px); }
+.btn:active, .tab:active, .icon-btn--mobile:active, .burger:active, .qv__close:active { transform: scale(.95); transition-duration: 80ms; }
+.variants tbody tr, .field input, .field textarea, .field select { transition: background-color var(--base) var(--ease-out), border-color var(--base) var(--ease-out), box-shadow var(--base) var(--ease-out); }
+
+/* Мобильное меню и быстрый просмотр: открытие пружиной */
+.mobile-menu { -webkit-backdrop-filter: blur(32px) saturate(180%); backdrop-filter: blur(32px) saturate(180%); }
+.mobile-menu:not([hidden]) { animation: kp-fade-in 300ms var(--ease-out); }
+.mobile-menu:not([hidden]) nav a, .mobile-menu:not([hidden]) .btn { animation: kp-rise 600ms var(--spring) backwards; }
+.mobile-menu:not([hidden]) nav a:nth-child(2) { animation-delay: 50ms; }
+.mobile-menu:not([hidden]) nav a:nth-child(3) { animation-delay: 100ms; }
+.mobile-menu:not([hidden]) nav a:nth-child(4) { animation-delay: 150ms; }
+.mobile-menu:not([hidden]) nav a:nth-child(5) { animation-delay: 200ms; }
+.mobile-menu:not([hidden]) .btn { animation-delay: 250ms; }
+.qv__panel { background-image: var(--glass-hi); animation: kp-sheet-in 550ms var(--spring); }
+.qv__backdrop { animation: kp-fade-in 300ms var(--ease-out); }
+@media (max-width: 767px) { .qv__panel { animation-name: kp-sheet-up; } }
+
+@keyframes kp-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes kp-rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@keyframes kp-sheet-in { from { opacity: 0; transform: scale(.94) translateY(24px); } to { opacity: 1; transform: none; } }
+@keyframes kp-sheet-up { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: no-preference) {
+  /* Плавное появление блоков при скролле — чистый CSS (scroll-driven),
+     без JS; в браузерах без поддержки блоки видны сразу. */
+  @supports (animation-timeline: view()) {
+    .section__head, .card, .steps li, .facts > *, .case, .pitch > *, .contact-info > *, .link-list a {
+      animation: kp-reveal linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 55%;
+    }
+  }
+  @keyframes kp-reveal {
+    from { opacity: 0; transform: translateY(28px) scale(.98); filter: blur(6px); }
+    to { opacity: 1; transform: none; filter: blur(0); }
+  }
+
+  /* Переход между страницами: старая мягко уходит, новая всплывает.
+     Шапка остаётся на месте. */
+  @view-transition { navigation: auto; }
+  ::view-transition-old(root) { animation: kp-page-out 220ms var(--ease) both; }
+  ::view-transition-new(root) { animation: kp-page-in 520ms var(--ease-out) both; }
+  @keyframes kp-page-out { to { opacity: 0; transform: translateY(-8px) scale(.99); filter: blur(4px); } }
+  @keyframes kp-page-in { from { opacity: 0; transform: translateY(18px) scale(.99); filter: blur(4px); } }
+}
+
+/* ── Liquid glass 3: объёмное стекло вместо «серого пластика» ─────────── */
+/* Настоящая кромка стекла: яркий блик с верхнего-левого угла, слабый с
+   нижнего-правого, внутреннее свечение снизу и мягкая тень. Градиент
+   заливки почти прозрачный — через него виден фон. */
+:root {
+  --glass-hi: none;
+  --glass-bg: linear-gradient(180deg, rgba(255,255,255,.13), rgba(255,255,255,.04));
+  --glass-bg-strong: linear-gradient(180deg, rgba(255,255,255,.17), rgba(255,255,255,.06));
+  --glass-border: rgba(255,255,255,.10);
+  --glass-blur: blur(20px) saturate(200%) brightness(1.08);
+  --glass-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.05),
+    inset 1.5px 1.5px 1px -.5px rgba(255,255,255,.55),
+    inset -1.5px -1.5px 1px -.5px rgba(255,255,255,.22),
+    inset 0 -10px 18px -10px rgba(255,255,255,.14),
+    0 10px 28px -8px rgba(0,0,0,.45);
+}
+
+/* Шапка: дымчатое стекло — читается и на тёмном, и на жёлтом блоке */
+.masthead::before {
+  background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.03)), rgba(22,22,22,.72);
+  -webkit-backdrop-filter: blur(26px) saturate(190%);
+  backdrop-filter: blur(26px) saturate(190%);
+}
+.nav a[aria-current], .nav a.is-active {
+  background: linear-gradient(180deg, rgba(255,255,255,.2), rgba(255,255,255,.08));
+  box-shadow: inset 1px 1px 1px -.5px rgba(255,255,255,.6), inset -1px -1px 1px -.5px rgba(255,255,255,.2), 0 4px 12px -4px rgba(0,0,0,.4);
+}
+
+/* Стеклянные кнопки и контролы */
+.btn--ghost, .tab, .qty, .icon-btn--mobile, .qv__close { background-image: none; }
+.btn--ghost:hover, .tab:hover { background: var(--glass-bg-strong); border-color: var(--glass-border); filter: brightness(1.15); }
+
+/* Жёлтая кнопка — янтарное стекло с объёмом, без «пластикового» ореола */
+.btn--solid, .tab[aria-current] {
+  background: linear-gradient(180deg, #ffe066 0%, #f7c900 48%, #e8b500 100%);
+  border-color: rgba(255,255,255,.25);
+  box-shadow:
+    inset 1.5px 1.5px 1px -.5px rgba(255,255,255,.85),
+    inset -1px -1px 1px -.5px rgba(255,236,150,.55),
+    inset 0 -6px 10px -6px rgba(150,95,0,.35),
+    0 8px 22px -8px rgba(242,194,0,.55);
+}
+.btn--solid:hover { background: linear-gradient(180deg, #ffe97f 0%, #ffd21f 48%, #f0bc00 100%); }
+.btn--dark { background: linear-gradient(180deg, #2a2a2a, #141414); box-shadow: inset 1px 1px 1px -.5px rgba(255,255,255,.35), 0 8px 20px -8px rgba(0,0,0,.6); }
+.masthead[data-scrolled] .nav a, .masthead[data-scrolled] .cart-link { color: rgba(242,240,235,.82); }
+.masthead[data-scrolled] .nav a:hover, .masthead[data-scrolled] .nav a.is-active, .masthead[data-scrolled] .cart-link:hover { color: #fff; }
+
+/* Внешние тени у элементов с backdrop-filter в некоторых браузерах рисуются
+   жёстким тёмным прямоугольником — оставляем только внутренние блики. */
+:root {
+  --glass-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.05),
+    inset 1.5px 1.5px 1px -.5px rgba(255,255,255,.55),
+    inset -1.5px -1.5px 1px -.5px rgba(255,255,255,.22),
+    inset 0 -10px 18px -10px rgba(255,255,255,.14);
+}
+.masthead::before { box-shadow: var(--glass-shadow); }
+.qv__panel { box-shadow: var(--glass-shadow); }
+.nav a[aria-current], .nav a.is-active { box-shadow: inset 1px 1px 1px -.5px rgba(255,255,255,.6), inset -1px -1px 1px -.5px rgba(255,255,255,.2); }
+
+/* ── Скользящий индикатор меню (как таб-бар iOS) ─────────────────────── */
+.nav { position: relative; }
+.nav a { position: relative; z-index: 1; background: none !important; box-shadow: none !important; }
+.nav__indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  border-radius: 999px;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,.22), rgba(255,255,255,.08));
+  box-shadow:
+    inset 1.5px 1.5px 1px -.5px rgba(255,255,255,.65),
+    inset -1px -1px 1px -.5px rgba(255,255,255,.25),
+    inset 0 -6px 10px -6px rgba(255,255,255,.18);
+  view-transition-name: kp-nav-ind;
+}
+.nav__indicator.is-ready {
+  transition:
+    transform 650ms var(--spring),
+    width 650ms var(--spring),
+    height 650ms var(--spring),
+    opacity 250ms var(--ease-out);
+}
+::view-transition-group(kp-nav-ind) { animation-duration: 600ms; animation-timing-function: var(--spring); }
