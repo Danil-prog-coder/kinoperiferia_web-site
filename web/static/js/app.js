@@ -374,8 +374,24 @@
   }
 
   function media(p) {
-    if (p.hasPhoto) {
-      return '<img class="product__img" src="' + esc(p.image) + '" alt="' + esc(p.alt) + '">';
+    var imgs = p.images && p.images.length ? p.images : (p.hasPhoto ? [p.image] : []);
+    if (imgs.length > 1) {
+      return '<div class="gallery" data-gallery>' +
+        '<div class="gallery__track" tabindex="0" role="group" aria-label="Фотографии изделия, ' + imgs.length + ' шт.">' +
+        imgs.map(function (src, i) {
+          return '<img class="product__img gallery__slide" src="' + esc(src) + '" alt="' + esc(p.alt) + ', фото ' + (i + 1) + '"' +
+            (i ? ' loading="lazy"' : '') + ' decoding="async">';
+        }).join('') + '</div>' +
+        '<button class="gallery__btn gallery__btn--prev" type="button" data-gallery-prev disabled aria-label="Предыдущее фото">‹</button>' +
+        '<button class="gallery__btn gallery__btn--next" type="button" data-gallery-next aria-label="Следующее фото">›</button>' +
+        '<div class="gallery__dots">' +
+        imgs.map(function (_, i) {
+          return '<button class="gallery__dot' + (i ? '' : ' is-active') + '" type="button" data-gallery-dot="' + i +
+            '" aria-label="Фото ' + (i + 1) + ' из ' + imgs.length + '"></button>';
+        }).join('') + '</div></div>';
+    }
+    if (imgs.length) {
+      return '<img class="product__img" src="' + esc(imgs[0]) + '" alt="' + esc(p.alt) + '">';
     }
     return '<div class="ph" role="img" aria-label="Фотография изделия «' + esc(p.name) + '» появится позже">' +
       '<span class="ph__mark">КП</span><span class="ph__text">Фото скоро</span></div>';
@@ -385,10 +401,48 @@
      показываем её, иначе — фото изделия по умолчанию (или плашку). */
   function mediaFor(p, variant) {
     if (variant && variant.hasPhoto) {
-      return { hasPhoto: true, image: variant.image, alt: variant.alt || p.name, name: p.name };
+      return { hasPhoto: true, image: variant.image, images: variant.images, alt: variant.alt || p.name, name: p.name };
     }
     return p;
   }
+
+  /* Слайдер фотографий: листание стрелками, точками и свайпом (scroll-snap).
+     Обработчики висят на document, поэтому работают и после замены разметки
+     при выборе исполнения. */
+  function gallerySlide(track) {
+    return Math.round(track.scrollLeft / (track.clientWidth || 1));
+  }
+
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-gallery-prev], [data-gallery-next], [data-gallery-dot]');
+    if (!btn) return;
+    var gallery = btn.closest('[data-gallery]');
+    var track = gallery && gallery.querySelector('.gallery__track');
+    if (!track) return;
+    e.preventDefault();
+    var count = track.children.length;
+    var idx = gallerySlide(track);
+    if (btn.hasAttribute('data-gallery-prev')) idx -= 1;
+    else if (btn.hasAttribute('data-gallery-next')) idx += 1;
+    else idx = Number(btn.getAttribute('data-gallery-dot'));
+    idx = Math.max(0, Math.min(count - 1, idx));
+    var smooth = !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    track.scrollTo({ left: idx * track.clientWidth, behavior: smooth ? 'smooth' : 'auto' });
+  });
+
+  /* scroll не всплывает — слушаем в фазе перехвата. */
+  document.addEventListener('scroll', function (e) {
+    var track = e.target;
+    if (!track || !track.classList || !track.classList.contains('gallery__track')) return;
+    var idx = gallerySlide(track);
+    var last = track.children.length - 1;
+    var gallery = track.closest('[data-gallery]');
+    gallery.querySelectorAll('.gallery__dot').forEach(function (d, i) { d.classList.toggle('is-active', i === idx); });
+    var prev = gallery.querySelector('[data-gallery-prev]');
+    var next = gallery.querySelector('[data-gallery-next]');
+    if (prev) prev.disabled = idx <= 0;
+    if (next) next.disabled = idx >= last;
+  }, true);
 
   /* Кнопка «В корзину» и счётчик количества — общая логика для быстрого
      просмотра и страницы изделия. getSelectedVariant читает текущий выбор
@@ -441,7 +495,7 @@
       var cells = (v.values || []).map(function (value) {
         return '<td>' + esc(value) + '</td>';
       }).join('');
-      var cls = 'variants__price' + (v.price ? '' : ' variants__price--unknown');
+      var cls = 'variants__price' + (v.price || v.negotiable ? '' : ' variants__price--unknown');
       return '<tr data-variant="' + i + '">' + cells + '<td class="' + cls + '">' + esc(v.priceLabel) + '</td></tr>';
     }).join('');
 

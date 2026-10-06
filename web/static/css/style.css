@@ -931,3 +931,19 @@ body {
   ::view-transition-new(root) { animation: kp-page-in 520ms var(--ease-out) both; }
   ::view-transition-group(kp-nav-ind) { animation-duration: 600ms; animation-timing-function: var(--spring); }
 }
+
+/* Слайдер фотографий изделия */
+.gallery { position: relative; width: 100%; height: 100%; }
+.gallery__track { display: flex; width: 100%; height: 100%; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+.gallery__track::-webkit-scrollbar { display: none; }
+.gallery__track:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.gallery__slide { flex: 0 0 100%; scroll-snap-align: start; scroll-snap-stop: always; }
+.gallery__btn { position: absolute; top: 50%; transform: translateY(-50%); width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(255,255,255,.28); background: rgba(20,20,20,.45); color: #fff; font-size: 26px; line-height: 1; display: grid; place-items: center; cursor: pointer; backdrop-filter: blur(10px) saturate(1.4); -webkit-backdrop-filter: blur(10px) saturate(1.4); transition: opacity var(--base) var(--ease), background var(--base) var(--ease); }
+.gallery__btn:hover { background: rgba(20,20,20,.65); }
+.gallery__btn:disabled { opacity: 0; pointer-events: none; }
+.gallery__btn--prev { left: var(--space-3); padding-bottom: 3px; }
+.gallery__btn--next { right: var(--space-3); padding-bottom: 3px; }
+.gallery__dots { position: absolute; left: 50%; bottom: var(--space-3); transform: translateX(-50%); display: flex; gap: 6px; padding: 6px 10px; border-radius: 999px; background: rgba(20,20,20,.4); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.gallery__dot { width: 7px; height: 7px; padding: 0; border: 0; border-radius: 50%; background: rgba(255,255,255,.45); cursor: pointer; transition: background var(--base) var(--ease), transform var(--base) var(--ease); }
+.gallery__dot.is-active { background: #fff; transform: scale(1.25); }
+@media (hover: none) { .gallery__btn { display: none; } }

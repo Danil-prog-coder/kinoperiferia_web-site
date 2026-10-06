@@ -177,6 +177,7 @@ type productDTO struct {
 	PriceLabel    string         `json:"priceLabel"`
 	OldPriceLabel string         `json:"oldPriceLabel"`
 	Image         string         `json:"image"`
+	Images        []string       `json:"images"`
 	Alt           string         `json:"alt"`
 	HasPhoto      bool           `json:"hasPhoto"`
 	URL           string         `json:"url"`
@@ -194,7 +195,9 @@ type variantDTO struct {
 	Values     []string `json:"values"`
 	Price      int      `json:"price"`
 	PriceLabel string   `json:"priceLabel"`
+	Negotiable bool     `json:"negotiable"`
 	Image      string   `json:"image"`
+	Images     []string `json:"images"`
 	Alt        string   `json:"alt"`
 	HasPhoto   bool     `json:"hasPhoto"`
 }
@@ -217,6 +220,7 @@ func toDTO(p catalog.Product) productDTO {
 		PriceLabel:    p.PriceLabel(),
 		OldPriceLabel: p.OldPriceLabel(),
 		Image:         p.Image,
+		Images:        p.Photos(),
 		Alt:           p.Alt,
 		HasPhoto:      p.HasPhoto(),
 		URL:           "/product/" + p.Slug,
@@ -234,7 +238,9 @@ func toVariantDTOs(list []catalog.Variant) []variantDTO {
 			Values:     v.Values,
 			Price:      v.Price,
 			PriceLabel: v.PriceLabel(),
+			Negotiable: v.Negotiable,
 			Image:      v.Image,
+			Images:     v.Photos(),
 			Alt:        v.Alt,
 			HasPhoto:   v.HasPhoto(),
 		})

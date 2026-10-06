@@ -13,6 +13,7 @@ import (
 
 	"github.com/danil-prog-coder/kinoperiferia_web-site/internal/catalog"
 	"github.com/danil-prog-coder/kinoperiferia_web-site/internal/orders"
+	"github.com/danil-prog-coder/kinoperiferia_web-site/internal/site"
 )
 
 func newTestServer(t *testing.T, store *orders.Store) *Server {
@@ -71,7 +72,7 @@ func TestIndexRendersFeaturedCatalogAndContacts(t *testing.T) {
 	body := get(t, newTestServer(t, nil), "/").Body.String()
 
 	for _, want := range []string{
-		"Все для СЪЕМОК", "Каталог", "Все 17 товаров →", "Показать больше",
+		"Все для СЪЕМОК", "Каталог", "Все " + countLabel(catalog.Count(), true) + " →", "Показать больше",
 		`class="hero__copy"`,
 		"https://t.me/suvorov_dmitry", "Voros@list.ru",
 		// html/template кодирует «+» в тексте и атрибутах как &#43; — браузер
@@ -128,7 +129,7 @@ func TestCatalogShowsFullListWithoutRevealToggle(t *testing.T) {
 
 func TestCatalogUnknownFilterFallsBackToWholeCatalog(t *testing.T) {
 	body := get(t, newTestServer(t, nil), "/catalog?cat=выдумка").Body.String()
-	if !strings.Contains(body, "17 товаров") {
+	if !strings.Contains(body, countLabel(catalog.Count(), true)) {
 		t.Error("неизвестная категория не свелась к полному каталогу")
 	}
 }
@@ -172,7 +173,7 @@ func TestProductPageShowsVariantsAndRelated(t *testing.T) {
 }
 
 func TestProductPageShowsUnknownPriceAsXXX(t *testing.T) {
-	body := get(t, newTestServer(t, nil), "/product/sunhood").Body.String()
+	body := get(t, newTestServer(t, nil), "/product/cinesaddle-podlokotnik").Body.String()
 
 	if !strings.Contains(body, catalog.PriceUnknown) {
 		t.Error("цена без согласования показана не как XXX")
@@ -185,14 +186,14 @@ func TestProductPageShowsUnknownPriceAsXXX(t *testing.T) {
 	}
 }
 
-func TestProductPageWithoutPhotoShowsPlaceholder(t *testing.T) {
+func TestProductPageShowsPhoto(t *testing.T) {
 	body := get(t, newTestServer(t, nil), "/product/cinesaddle").Body.String()
 
-	if !strings.Contains(body, "Фото скоро") {
-		t.Error("вместо отсутствующей фотографии нет плашки")
+	if !strings.Contains(body, `<img class="product__img gallery__slide" src="/static/img/cinesaddle-1.jpg"`) {
+		t.Error("на странице изделия нет фотографии")
 	}
-	if strings.Contains(body, `<img class="product__img"`) {
-		t.Error("выведен пустой тег изображения")
+	if strings.Contains(body, "Фото скоро") {
+		t.Error("у изделия с фотографией показана плашка")
 	}
 }
 
@@ -260,8 +261,8 @@ func TestAPISingleProduct(t *testing.T) {
 	if p.Price != 300 || p.PriceLabel != "от 300 ₽" {
 		t.Errorf("неверная цена: %+v", p)
 	}
-	if p.HasPhoto {
-		t.Error("у изделия без фотографии hasPhoto = true")
+	if !p.HasPhoto || p.Image != "/static/img/soty-titan-1.jpg" {
+		t.Errorf("фотография изделия не передана: hasPhoto=%v image=%q", p.HasPhoto, p.Image)
 	}
 	if len(p.OptionNames) != 2 || len(p.Variants) != 12 {
 		t.Errorf("исполнения переданы не полностью: %d колонок, %d строк", len(p.OptionNames), len(p.Variants))
@@ -275,7 +276,7 @@ func TestAPISingleProduct(t *testing.T) {
 }
 
 func TestAPIMarksUnknownPriceAsXXX(t *testing.T) {
-	rec := get(t, newTestServer(t, nil), "/api/products/sumka-mehanika")
+	rec := get(t, newTestServer(t, nil), "/api/products/cinesaddle-podlokotnik")
 
 	var p productDTO
 	if err := json.Unmarshal(rec.Body.Bytes(), &p); err != nil {
@@ -284,10 +285,21 @@ func TestAPIMarksUnknownPriceAsXXX(t *testing.T) {
 	if p.Price != 0 || p.PriceLabel != catalog.PriceUnknown {
 		t.Errorf("цена без согласования: %+v", p)
 	}
-	for _, v := range p.Variants {
-		if v.PriceLabel != catalog.PriceUnknown {
-			t.Errorf("исполнение %v: подпись цены %q", v.Values, v.PriceLabel)
-		}
+}
+
+func TestAPILabelsNegotiableVariant(t *testing.T) {
+	rec := get(t, newTestServer(t, nil), "/api/products/organizer-pelican")
+
+	var p productDTO
+	if err := json.Unmarshal(rec.Body.Bytes(), &p); err != nil {
+		t.Fatalf("ответ не разбирается: %v", err)
+	}
+	last := p.Variants[len(p.Variants)-1]
+	if !last.Negotiable || last.PriceLabel != catalog.PriceNegotiable {
+		t.Errorf("исполнение «под заказ»: %+v", last)
+	}
+	if p.PriceLabel != "от 15 000 ₽" {
+		t.Errorf("цена изделия %q", p.PriceLabel)
 	}
 }
 
@@ -565,5 +577,37 @@ func TestContactLinksKeepTheirSchemes(t *testing.T) {
 		if !strings.Contains(body, `href="tel:&#43;79152670243"`) {
 			t.Errorf("%s: нет рабочей ссылки на телефон", path)
 		}
+	}
+}
+
+func TestProductPageGalleryHasSlidesAndControls(t *testing.T) {
+	body := get(t, newTestServer(t, nil), "/product/floppy-120").Body.String()
+
+	if n := strings.Count(body, `class="product__img gallery__slide"`); n != 5 {
+		t.Errorf("слайдов в галерее %d, ожидали 5", n)
+	}
+	for _, want := range []string{"data-gallery-prev", "data-gallery-next", `data-gallery-dot="4"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("в галерее нет %s", want)
+		}
+	}
+}
+
+func TestProductPageSinglePhotoHasNoGallery(t *testing.T) {
+	body := get(t, newTestServer(t, nil), "/product/soty-titan").Body.String()
+
+	if strings.Contains(body, "data-gallery") {
+		t.Error("у изделия с одним фото выведен слайдер")
+	}
+}
+
+func TestIndexHeroUsesDedicatedPhoto(t *testing.T) {
+	body := get(t, newTestServer(t, nil), "/").Body.String()
+
+	if !strings.Contains(body, `<img class="hero__img" src="`+site.HeroImage+`"`) {
+		t.Error("на главной нет отдельного фото в hero")
+	}
+	if !strings.Contains(body, `og:image" content="`+site.HeroImage) {
+		t.Error("og:image не указывает на фото hero")
 	}
 }

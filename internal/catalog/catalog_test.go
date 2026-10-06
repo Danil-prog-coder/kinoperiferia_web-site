@@ -1,6 +1,7 @@
 package catalog
 
 import (
+	"os"
 	"strconv"
 	"testing"
 )
@@ -251,5 +252,35 @@ func TestHasPhoto(t *testing.T) {
 	}
 	if !(Product{Image: "https://example.test/p.jpg"}).HasPhoto() {
 		t.Error("HasPhoto() = false при заполненном Image")
+	}
+}
+
+func TestPhotosOrderAndEmpty(t *testing.T) {
+	p := Product{Image: "a.jpg", Gallery: []string{"b.jpg", "c.jpg"}}
+	if got := p.Photos(); len(got) != 3 || got[0] != "a.jpg" || got[2] != "c.jpg" {
+		t.Errorf("Photos() = %v", got)
+	}
+	if got := (Product{Gallery: []string{"b.jpg"}}).Photos(); got != nil {
+		t.Errorf("без Image Photos() = %v, ожидали nil", got)
+	}
+	if got := (Variant{Image: "v.jpg"}).Photos(); len(got) != 1 {
+		t.Errorf("Variant.Photos() = %v", got)
+	}
+}
+
+func TestGalleryFilesAreOnDisk(t *testing.T) {
+	for _, p := range All() {
+		for _, src := range p.Photos() {
+			if _, err := os.Stat("../../web" + src); err != nil {
+				t.Errorf("%s: нет файла %s", p.Slug, src)
+			}
+		}
+		for _, v := range p.Variants {
+			for _, src := range v.Photos() {
+				if _, err := os.Stat("../../web" + src); err != nil {
+					t.Errorf("%s: нет файла %s", p.Slug, src)
+				}
+			}
+		}
 	}
 }

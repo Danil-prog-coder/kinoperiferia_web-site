@@ -53,7 +53,7 @@ func (s *Server) productJSONLD(p catalog.Product) template.JS {
 	// Фотографии может не быть: пустое поле image поисковики считают ошибкой,
 	// поэтому лучше его не выводить вовсе.
 	if p.HasPhoto() {
-		data["image"] = p.Image
+		data["image"] = p.Photos()
 	}
 
 	// Цены может не быть ни у одного исполнения — тогда блока offers нет:

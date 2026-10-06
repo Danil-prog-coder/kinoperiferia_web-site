@@ -82,6 +82,7 @@ var pages = []string{"index", "catalog", "product", "order", "error", "privacy"}
 func parseTemplates(fsys fs.FS, assets assetVersions) (map[string]*template.Template, error) {
 	funcs := template.FuncMap{
 		"asset": assets.URL,
+		"add":   func(a, b int) int { return a + b },
 	}
 	out := make(map[string]*template.Template, len(pages))
 	for _, name := range pages {
@@ -231,6 +232,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		all := catalog.All()
 		hero = all[0]
 	}
+	hero.Image, hero.Alt = site.HeroImage, site.HeroAlt
 
 	page := indexPage{
 		pageBase: s.base(r, "home",

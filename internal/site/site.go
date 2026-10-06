@@ -16,6 +16,11 @@ const (
 	EmailHref   = "mailto:Voros@list.ru"
 	Warranty    = "Гарантия 1 год"
 
+	// HeroImage и HeroAlt — фотография рядом с заголовком главной страницы
+	// и картинка для превью ссылки (og:image).
+	HeroImage = "/static/img/hero.jpg"
+	HeroAlt   = "Козырёк Kino.Periferia на мониторе кинокамеры"
+
 	// PickupAddress и Hours — адрес и часы работы точки самовывоза.
 	// TODO(клиент): подставить точный адрес и часы — сейчас плейсхолдер.
 	PickupAddress = "Москва, адрес уточняется в Telegram"

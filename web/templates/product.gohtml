@@ -9,7 +9,7 @@
   <figure class="product__figure">
     <div class="product__media" data-media>
       {{- if .Product.HasPhoto }}
-      <img class="product__img" src="{{ .Product.Image }}" alt="{{ .Product.Alt }}" width="1000" height="1250" fetchpriority="high" decoding="async">
+      {{ template "gallery" .Product }}
       {{- else }}
       {{ template "photo-placeholder" .Product }}
       {{- end }}
@@ -52,7 +52,7 @@
           {{- range $v.Values }}
           <td>{{ . }}</td>
           {{- end }}
-          <td class="variants__price{{ if not $v.Price }} variants__price--unknown{{ end }}">{{ $v.PriceLabel }}</td>
+          <td class="variants__price{{ if and (not $v.Price) (not $v.Negotiable) }} variants__price--unknown{{ end }}">{{ $v.PriceLabel }}</td>
         </tr>
         {{- end }}
       </tbody>

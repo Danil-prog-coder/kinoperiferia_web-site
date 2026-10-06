@@ -223,3 +223,26 @@
   </div>
 </footer>
 {{- end -}}
+
+{{- define "gallery" -}}
+{{- $photos := .Photos -}}
+{{- $alt := .Alt -}}
+{{- if gt (len $photos) 1 -}}
+<div class="gallery" data-gallery>
+  <div class="gallery__track" tabindex="0" role="group" aria-label="Фотографии изделия, {{ len $photos }} шт.">
+    {{- range $i, $src := $photos }}
+    <img class="product__img gallery__slide" src="{{ $src }}" alt="{{ $alt }}, фото {{ add $i 1 }}" width="1000" height="1250" decoding="async"{{ if eq $i 0 }} fetchpriority="high"{{ else }} loading="lazy"{{ end }}>
+    {{- end }}
+  </div>
+  <button class="gallery__btn gallery__btn--prev" type="button" data-gallery-prev disabled aria-label="Предыдущее фото">‹</button>
+  <button class="gallery__btn gallery__btn--next" type="button" data-gallery-next aria-label="Следующее фото">›</button>
+  <div class="gallery__dots">
+    {{- range $i, $src := $photos }}
+    <button class="gallery__dot{{ if eq $i 0 }} is-active{{ end }}" type="button" data-gallery-dot="{{ $i }}" aria-label="Фото {{ add $i 1 }} из {{ len $photos }}"></button>
+    {{- end }}
+  </div>
+</div>
+{{- else if $photos -}}
+<img class="product__img" src="{{ index $photos 0 }}" alt="{{ $alt }}" width="1000" height="1250" fetchpriority="high" decoding="async">
+{{- end -}}
+{{- end -}}
