@@ -355,7 +355,7 @@ p { max-width: 60ch; }
 }
 .ph__mark { font-family: var(--font-mono); font-size: var(--fs-h3); }
 .ph__text { font-size: var(--fs-label); }
-.ph--wide { aspect-ratio: 4 / 3; }
+.ph--wide { height: auto; aspect-ratio: 4 / 3; }
 
 /* ── Каталог (главная и /catalog) ────────────────────────────────────── */
 .grid--catalog {
@@ -416,7 +416,7 @@ p { max-width: 60ch; }
 .steps__term { font-size: var(--fs-small); color: rgba(20,20,20,.65); }
 
 .cases { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--card-gap) var(--gutter); margin-top: var(--space-8); }
-.case .ph { aspect-ratio: 4 / 3; margin-bottom: var(--space-3); background: rgba(20,20,20,.06); color: rgba(20,20,20,.5); }
+.case .ph { height: auto; aspect-ratio: 4 / 3; margin-bottom: var(--space-3); background: rgba(20,20,20,.06); color: rgba(20,20,20,.5); }
 .case__text { font-size: var(--fs-small); color: rgba(20,20,20,.8); margin-bottom: var(--space-1); max-width: none; }
 .case__label { font-weight: 500; color: var(--ink); }
 
