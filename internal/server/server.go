@@ -77,7 +77,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // pages перечисляет шаблоны страниц; каждый объявляет блок "content".
-var pages = []string{"index", "catalog", "product", "order", "error", "privacy"}
+var pages = []string{"index", "product", "order", "error", "privacy"}
 
 func parseTemplates(fsys fs.FS, assets assetVersions) (map[string]*template.Template, error) {
 	funcs := template.FuncMap{
@@ -100,7 +100,7 @@ func (s *Server) routes(staticFS fs.FS) {
 	s.mux.Handle("GET /static/", staticHandler(staticFS))
 
 	s.mux.HandleFunc("GET /{$}", s.handleIndex)
-	s.mux.HandleFunc("GET /catalog", s.handleCatalog)
+	s.mux.HandleFunc("GET /catalog", s.handleCatalogRedirect)
 	s.mux.HandleFunc("GET /product/{slug}", s.handleProduct)
 	s.mux.HandleFunc("GET /order", s.handleOrderForm)
 	s.mux.HandleFunc("POST /order", s.handleOrderSubmit)
@@ -139,22 +139,7 @@ func (s *Server) canonical(path string) string {
 
 // ── Витрина ────────────────────────────────────────────────────────────
 
-// featuredCount — сколько хитов показывает главная: сетка 4×2 без фильтров
-// и сортировки. Полный список — только на /catalog (раздел 6.4, 8 ТЗ).
-const featuredCount = 8
-
-// buildHomeCatalog собирает подборку хитов для главной.
-func (s *Server) buildHomeCatalog() catalogTeaser {
-	all := catalog.All()
-	return catalogTeaser{
-		Heading:    "Каталог",
-		TotalLabel: "Все " + countLabel(len(all), true) + " →",
-		MoreURL:    "/catalog",
-		Products:   catalog.Featured(featuredCount),
-	}
-}
-
-// buildFullCatalog собирает состояние страницы /catalog из query-параметра
+// buildFullCatalog собирает состояние каталога на главной из query-параметра
 // cat. Неизвестное значение молча заменяется пустым: ссылки на каталог часто
 // приходят извне, и падать из-за мусора в query не нужно. Сортировки на этой
 // странице больше нет — при 18 позициях она не нужна (раздел 8 ТЗ).
@@ -174,7 +159,7 @@ func (s *Server) buildFullCatalog(r *http.Request) catalogView {
 
 	filters := make([]categoryFilter, 0, len(catalog.Categories))
 	for _, c := range catalog.Categories {
-		href := "/catalog"
+		href := "/"
 		if c.Slug != "all" {
 			href += "?" + (url.Values{"cat": {c.Slug}}).Encode()
 		}
@@ -227,33 +212,11 @@ func plural(n int, one, few, many string) string {
 // ── Обработчики страниц ────────────────────────────────────────────────
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
-	hero, ok := catalog.BySlug("cinesaddle")
-	if !ok {
-		all := catalog.All()
-		hero = all[0]
-	}
-	hero.Image, hero.Alt = site.HeroImage, site.HeroAlt
-
-	page := indexPage{
-		pageBase: s.base(r, "home",
-			site.Brand+" — аксессуары для кинопроизводства, "+site.City,
-			"Синесэдлы, сумки, ложементы и текстиль для света. Собственное производство в Москве, "+
-				"пошив под конкретный сетап, гарантия 1 год."),
-		Hero:    hero,
-		Catalog: s.buildHomeCatalog(),
-		Contact: s.contactFormBase(),
-	}
-	page.OGImage = hero.Image
-	page.JSONLD = s.organizationJSONLD()
-
-	s.render(w, r, "index", http.StatusOK, page)
-}
-
-func (s *Server) handleCatalog(w http.ResponseWriter, r *http.Request) {
 	view := s.buildFullCatalog(r)
 
-	title := "Каталог — " + site.Brand
-	desc := "Все изделия «Кинопериферии»: седла для камеры, сумки и кейсы, текстиль для света и оснастка площадки."
+	title := site.Brand + " — аксессуары для кинопроизводства, " + site.City
+	desc := "Синесэдлы, сумки, ложементы и текстиль для света. Собственное производство в Москве, " +
+		"пошив под конкретный сетап, гарантия 1 год."
 	if view.ActiveCategory != "" {
 		name := catalog.CategoryTitle(view.ActiveCategory)
 		view.Heading = name
@@ -261,14 +224,27 @@ func (s *Server) handleCatalog(w http.ResponseWriter, r *http.Request) {
 		desc = "Изделия «Кинопериферии» в категории «" + name + "»: цены, характеристики и заказ в Telegram."
 	}
 
-	page := catalogPage{
-		pageBase: s.base(r, "catalog", title, desc),
+	page := indexPage{
+		pageBase: s.base(r, "home", title, desc),
 		Catalog:  view,
+		Contact:  s.contactFormBase(),
 	}
 	if len(view.Products) > 0 {
 		page.OGImage = view.Products[0].Image
 	}
-	s.render(w, r, "catalog", http.StatusOK, page)
+	page.JSONLD = s.organizationJSONLD()
+
+	s.render(w, r, "index", http.StatusOK, page)
+}
+
+// handleCatalogRedirect уводит старый адрес /catalog на главную: каталог
+// теперь открывается сразу, фильтр категории (?cat=) сохраняется.
+func (s *Server) handleCatalogRedirect(w http.ResponseWriter, r *http.Request) {
+	target := "/"
+	if cat := r.URL.Query().Get("cat"); catalog.IsCategory(cat) && cat != "all" {
+		target += "?" + url.Values{"cat": {cat}}.Encode()
+	}
+	http.Redirect(w, r, target, http.StatusMovedPermanently)
 }
 
 func (s *Server) handleProduct(w http.ResponseWriter, r *http.Request) {
@@ -290,12 +266,12 @@ func (s *Server) handleProduct(w http.ResponseWriter, r *http.Request) {
 	}
 
 	page := productPage{
-		pageBase: s.base(r, "catalog",
+		pageBase: s.base(r, "product",
 			p.Name+" — "+p.PriceLabel()+" — "+site.Brand,
 			p.Detail),
 		Product: p,
 		Related: related,
-		BackURL: "/catalog?cat=" + p.Category,
+		BackURL: "/?cat=" + p.Category,
 	}
 	page.OGType = "product"
 	page.OGImage = p.Image
@@ -528,9 +504,9 @@ func (s *Server) writeJSON(w http.ResponseWriter, status int, v any) {
 // ── Служебные маршруты ─────────────────────────────────────────────────
 
 func (s *Server) handleSitemap(w http.ResponseWriter, r *http.Request) {
-	// Отфильтрованные /catalog?cat=… не входят: их canonical всегда указывает
-	// на голый /catalog (раздел 8 ТЗ), отдельная индексация им не нужна.
-	paths := []string{"/", "/catalog", "/order", "/privacy"}
+	// Отфильтрованные /?cat=… не входят: их canonical всегда указывает
+	// на голую главную (раздел 8 ТЗ), отдельная индексация им не нужна.
+	paths := []string{"/", "/order", "/privacy"}
 	for _, p := range catalog.All() {
 		paths = append(paths, "/product/"+p.Slug)
 	}

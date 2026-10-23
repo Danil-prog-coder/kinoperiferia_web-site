@@ -25,10 +25,7 @@ type siteData struct {
 	PickupAddress string
 	Hours         string
 	Requisites    string
-	Features      []site.Feature
 	Delivery      []site.DeliveryOption
-	CustomSteps   []site.CustomStep
-	CustomCases   []site.CustomCase
 }
 
 var siteView = siteData{
@@ -45,10 +42,7 @@ var siteView = siteData{
 	PickupAddress: site.PickupAddress,
 	Hours:         site.Hours,
 	Requisites:    site.Requisites,
-	Features:      site.Features,
 	Delivery:      site.Delivery,
-	CustomSteps:   site.CustomSteps,
-	CustomCases:   site.CustomCases,
 }
 
 // pageBase — общие для всех страниц данные: мета-теги, навигация, контакты.
@@ -64,7 +58,7 @@ type pageBase struct {
 	Site        siteData
 }
 
-// categoryFilter — таб фильтра каталога на странице /catalog, со счётчиком
+// categoryFilter — таб фильтра каталога на главной, со счётчиком
 // изделий в категории.
 type categoryFilter struct {
 	Slug   string
@@ -74,7 +68,7 @@ type categoryFilter struct {
 	Count  int
 }
 
-// catalogView — полная витрина страницы /catalog: активный фильтр и список
+// catalogView — полная витрина на главной: активный фильтр и список
 // изделий. Сортировки и сворачивания больше нет — раздел 8 ТЗ убрал их как
 // не нужные при 18 позициях.
 type catalogView struct {
@@ -85,27 +79,11 @@ type catalogView struct {
 	Products       []catalog.Product
 }
 
-// catalogTeaser — подборка хитов на главной: без фильтров и сортировки,
-// с одной ссылкой на полный каталог.
-type catalogTeaser struct {
-	Heading    string
-	TotalLabel string
-	MoreURL    string
-	Products   []catalog.Product
-}
-
-// indexPage — главная страница.
+// indexPage — главная страница: полный каталог и форма заявки.
 type indexPage struct {
 	pageBase
-	Hero    catalog.Product
-	Catalog catalogTeaser
-	Contact contactForm
-}
-
-// catalogPage — отдельная страница каталога.
-type catalogPage struct {
-	pageBase
 	Catalog catalogView
+	Contact contactForm
 }
 
 // productPage — страница изделия.
