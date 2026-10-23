@@ -13,7 +13,6 @@ import (
 
 	"github.com/danil-prog-coder/kinoperiferia_web-site/internal/catalog"
 	"github.com/danil-prog-coder/kinoperiferia_web-site/internal/orders"
-	"github.com/danil-prog-coder/kinoperiferia_web-site/internal/site"
 )
 
 func newTestServer(t *testing.T, store *orders.Store) *Server {
@@ -44,9 +43,8 @@ func TestRoutesReturnExpectedStatus(t *testing.T) {
 		want int
 	}{
 		{"/", http.StatusOK},
-		{"/catalog", http.StatusOK},
-		{"/catalog?cat=light", http.StatusOK},
-		{"/catalog?cat=неизвестно&sort=мусор", http.StatusOK},
+		{"/?cat=light", http.StatusOK},
+		{"/?cat=неизвестно&sort=мусор", http.StatusOK},
 		{"/product/cinesaddle", http.StatusOK},
 		{"/product/нет-такого", http.StatusNotFound},
 		{"/order", http.StatusOK},
@@ -68,12 +66,11 @@ func TestRoutesReturnExpectedStatus(t *testing.T) {
 	}
 }
 
-func TestIndexRendersFeaturedCatalogAndContacts(t *testing.T) {
+func TestIndexStartsWithCatalogAndHasContacts(t *testing.T) {
 	body := get(t, newTestServer(t, nil), "/").Body.String()
 
 	for _, want := range []string{
-		"Все для СЪЕМОК", "Каталог", "Все " + countLabel(catalog.Count(), true) + " →", "Показать больше",
-		`class="hero__copy"`,
+		"Каталог изделий", `data-catalog-tabs`,
 		"https://t.me/suvorov_dmitry", "Voros@list.ru",
 		// html/template кодирует «+» в тексте и атрибутах как &#43; — браузер
 		// разбирает его обратно, поэтому проверяем закодированный вид.
@@ -85,24 +82,41 @@ func TestIndexRendersFeaturedCatalogAndContacts(t *testing.T) {
 		}
 	}
 
-	for _, p := range catalog.Featured(featuredCount) {
-		if !strings.Contains(body, p.Name) {
-			t.Errorf("на главной нет хита %q", p.Name)
+	for _, gone := range []string{
+		`class="hero__copy"`, `class="hero__figure"`, `id="custom"`, `id="about"`, "Нет нужного размера", "Производство", `href="/catalog"`,
+	} {
+		if strings.Contains(body, gone) {
+			t.Errorf("на главной остался убранный блок %q", gone)
+		}
+	}
+}
+
+func TestCatalogPathRedirectsToIndex(t *testing.T) {
+	s := newTestServer(t, nil)
+	for path, want := range map[string]string{
+		"/catalog":                 "/",
+		"/catalog?cat=light":       "/?cat=light",
+		"/catalog?cat=выдумка&x=1": "/",
+	} {
+		rec := get(t, s, path)
+		if rec.Code != http.StatusMovedPermanently || rec.Header().Get("Location") != want {
+			t.Errorf("GET %s = %d → %q, ожидалось 301 → %q", path, rec.Code, rec.Header().Get("Location"), want)
 		}
 	}
 }
 
 func TestCatalogFilterLimitsProducts(t *testing.T) {
 	s := newTestServer(t, nil)
-	body := get(t, s, "/catalog?cat=light").Body.String()
+	body := get(t, s, "/?cat=light").Body.String()
 
 	if !strings.Contains(body, "6 в подборке") {
 		t.Error("не показан счётчик подборки")
 	}
-	if !strings.Contains(body, "Флоппи флаг 120 × 120") {
+	if !strings.Contains(body, `href="/product/floppy-120"`) {
 		t.Error("в подборке «Для света» нет флоппи")
 	}
-	if strings.Contains(body, "Сандбег") {
+	// Название товара есть и в списке формы заявки, поэтому ищем карточку.
+	if strings.Contains(body, `href="/product/sandbag"`) {
 		t.Error("в подборке «Для света» оказалось изделие другой категории")
 	}
 }
@@ -110,16 +124,16 @@ func TestCatalogFilterLimitsProducts(t *testing.T) {
 func TestCatalogShowsFullListWithoutRevealToggle(t *testing.T) {
 	s := newTestServer(t, nil)
 
-	body := get(t, s, "/catalog").Body.String()
+	body := get(t, s, "/").Body.String()
 	if strings.Contains(body, "Посмотреть все") {
-		t.Error("на /catalog остался переключатель «Посмотреть все» — раздел 8 ТЗ убрал его")
+		t.Error("на главной остался переключатель «Посмотреть все» — раздел 8 ТЗ убрал его")
 	}
 	if strings.Contains(body, `id="reveal-catalog"`) {
-		t.Error("на /catalog остался CSS-переключатель раскрытия")
+		t.Error("на главной остался CSS-переключатель раскрытия")
 	}
 	for _, p := range catalog.All() {
 		if !strings.Contains(body, p.Name) {
-			t.Errorf("на /catalog нет изделия %q — список должен показываться целиком", p.Name)
+			t.Errorf("на главной нет изделия %q — список должен показываться целиком", p.Name)
 		}
 	}
 	if !strings.Contains(body, `data-filter="light"`) {
@@ -128,7 +142,7 @@ func TestCatalogShowsFullListWithoutRevealToggle(t *testing.T) {
 }
 
 func TestCatalogUnknownFilterFallsBackToWholeCatalog(t *testing.T) {
-	body := get(t, newTestServer(t, nil), "/catalog?cat=выдумка").Body.String()
+	body := get(t, newTestServer(t, nil), "/?cat=выдумка").Body.String()
 	if !strings.Contains(body, countLabel(catalog.Count(), true)) {
 		t.Error("неизвестная категория не свелась к полному каталогу")
 	}
@@ -200,7 +214,7 @@ func TestProductPageShowsPhoto(t *testing.T) {
 func TestCanonicalAndSitemapUseBaseURL(t *testing.T) {
 	s := newTestServer(t, nil)
 
-	if body := get(t, s, "/catalog").Body.String(); !strings.Contains(body, `href="https://kinoperiferia.example/catalog"`) {
+	if body := get(t, s, "/").Body.String(); !strings.Contains(body, `href="https://kinoperiferia.example/"`) {
 		t.Error("canonical не использует BASE_URL")
 	}
 
@@ -212,7 +226,7 @@ func TestCanonicalAndSitemapUseBaseURL(t *testing.T) {
 		t.Error("в sitemap неэкранированный амперсанд")
 	}
 	if strings.Contains(sitemap, "?cat=") {
-		t.Error("в sitemap остались отфильтрованные варианты /catalog?cat=… — их canonical всегда указывает на /catalog")
+		t.Error("в sitemap остались отфильтрованные варианты /catalog?cat=… — их canonical всегда указывает на главной")
 	}
 	for _, p := range catalog.All() {
 		if !strings.Contains(sitemap, "/product/"+p.Slug) {
@@ -557,7 +571,7 @@ func TestClientIPPrefersForwardedFor(t *testing.T) {
 
 func TestNoTemplateActionsLeakIntoOutput(t *testing.T) {
 	s := newTestServer(t, orders.NewStore("", nil, nil))
-	for _, path := range []string{"/", "/catalog", "/product/cinesaddle", "/order", "/privacy", "/нет-страницы"} {
+	for _, path := range []string{"/", "/product/cinesaddle", "/order", "/privacy", "/нет-страницы"} {
 		body, _ := io.ReadAll(get(t, s, path).Body)
 		if strings.Contains(string(body), "{{") || strings.Contains(string(body), "<no value>") {
 			t.Errorf("%s: в разметке остались части шаблона", path)
@@ -569,7 +583,7 @@ func TestNoTemplateActionsLeakIntoOutput(t *testing.T) {
 // template.URL ссылка на телефон превращается в #ZgotmplZ и перестаёт работать.
 func TestContactLinksKeepTheirSchemes(t *testing.T) {
 	s := newTestServer(t, nil)
-	for _, path := range []string{"/", "/catalog", "/product/cinesaddle", "/order"} {
+	for _, path := range []string{"/", "/product/cinesaddle", "/order"} {
 		body := get(t, s, path).Body.String()
 		if strings.Contains(body, "ZgotmplZ") {
 			t.Errorf("%s: ссылка отфильтрована html/template", path)
@@ -598,16 +612,5 @@ func TestProductPageSinglePhotoHasNoGallery(t *testing.T) {
 
 	if strings.Contains(body, "data-gallery") {
 		t.Error("у изделия с одним фото выведен слайдер")
-	}
-}
-
-func TestIndexHeroUsesDedicatedPhoto(t *testing.T) {
-	body := get(t, newTestServer(t, nil), "/").Body.String()
-
-	if !strings.Contains(body, `<img class="hero__img" src="`+site.HeroImage+`"`) {
-		t.Error("на главной нет отдельного фото в hero")
-	}
-	if !strings.Contains(body, `og:image" content="`+site.HeroImage) {
-		t.Error("og:image не указывает на фото hero")
 	}
 }

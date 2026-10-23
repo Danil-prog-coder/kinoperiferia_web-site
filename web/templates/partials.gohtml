@@ -3,9 +3,6 @@
   <div class="masthead__row">
     <a class="logo" href="/">Кино<b>периферия</b></a>
     <nav class="nav" aria-label="Основное меню" data-scroll-spy>
-      <a href="/catalog"{{ if eq .Nav "catalog" }} aria-current="page"{{ end }}>Каталог</a>
-      <a href="/#custom">На заказ</a>
-      <a href="/#about">Производство</a>
       <a href="/#delivery">Доставка</a>
       <a href="/#contacts">Контакты</a>
     </nav>
@@ -24,9 +21,6 @@
 </header>
 <div class="mobile-menu" id="mobile-menu" data-mobile-menu hidden>
   <nav aria-label="Основное меню">
-    <a href="/catalog">Каталог</a>
-    <a href="/#custom">На заказ</a>
-    <a href="/#about">Производство</a>
     <a href="/#delivery">Доставка</a>
     <a href="/#contacts">Контакты</a>
     <a href="/order">Корзина<span class="cart-link__count" data-cart-count hidden>0</span></a>
@@ -58,24 +52,6 @@
     {{- with .OldPriceLabel }}<span class="price--old">{{ . }}</span>{{ end }}
   </div>
 </a>
-{{- end -}}
-
-{{- define "catalog-teaser" -}}
-<section id="catalog" class="section">
-  <div class="section__head">
-    <h2 class="section__title">{{ .Catalog.Heading }}</h2>
-    <a class="section__note section__note--link" href="{{ .Catalog.MoreURL }}">{{ .Catalog.TotalLabel }}</a>
-  </div>
-  <div class="rule-thin" style="margin: var(--space-6) 0"></div>
-  <div class="grid grid--catalog">
-    {{- range .Catalog.Products }}
-    {{ template "card" . }}
-    {{- end }}
-  </div>
-  <div class="catalog-teaser__more">
-    <a class="btn btn--ghost" href="{{ .Catalog.MoreURL }}">Показать больше</a>
-  </div>
-</section>
 {{- end -}}
 
 {{- define "catalog-full" -}}
@@ -117,7 +93,7 @@
 </div>
 <div class="hero__actions">
   <a class="btn btn--solid" href="{{ .Site.Telegram }}" target="_blank" rel="noopener noreferrer">Написать в Telegram ↗</a>
-  <a class="btn btn--ghost" href="/catalog">Вернуться в каталог</a>
+  <a class="btn btn--ghost" href="/">Вернуться в каталог</a>
 </div>
 {{- else -}}
 {{- if .Failed -}}
@@ -192,7 +168,7 @@
   <div class="contacts">
     <h2 class="contacts__title">Не нашли нужное?</h2>
     <div>
-      <p class="contacts__text">Опишите задачу в Telegram — подберём готовое изделие из каталога или сошьём <a href="/#custom" style="color:var(--accent)">под ваш сетап</a>.</p>
+      <p class="contacts__text">Опишите задачу в Telegram — подберём готовое изделие из каталога или сошьём под ваш сетап.</p>
       <div class="link-list">
         <a href="{{ .Site.Telegram }}" target="_blank" rel="noopener noreferrer"><span>Telegram {{ .Site.TelegramTag }}</span><span>↗</span></a>
         <a href="{{ .Site.PhoneHref }}"><span>{{ .Site.Phone }}</span><span>↗</span></a>
@@ -208,8 +184,6 @@
   <div class="site-footer__row">
     <a class="logo logo--footer" href="/">Кино<b>периферия</b></a>
     <nav class="site-footer__nav" aria-label="Меню в подвале">
-      <a href="/catalog">Каталог</a>
-      <a href="/#custom">На заказ</a>
       <a href="/#delivery">Доставка</a>
       <a href="/privacy">Конфиденциальность</a>
     </nav>
