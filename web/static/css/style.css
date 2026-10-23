@@ -222,6 +222,8 @@ p { max-width: 60ch; }
   font-size: 12px;
   font-weight: 500;
 }
+.cart-link__count[hidden] { display: none; }
+.cart-link__icon { display: none; }
 .mobile-menu nav .cart-link__count { position: relative; top: -2px; margin-left: var(--space-2); }
 .icon-btn--mobile { display: none; width: 40px; height: 40px; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: var(--radius); }
 
@@ -654,7 +656,6 @@ p { max-width: 60ch; }
   .icon-btn--mobile { display: inline-flex; }
   .burger { display: flex; }
   .masthead__actions .btn--sm { display: none; }
-  .masthead .cart-link { display: none; }
 }
 
 @media (max-width: 767px) {
@@ -947,3 +948,31 @@ body {
 .gallery__dot { width: 7px; height: 7px; padding: 0; border: 0; border-radius: 50%; background: rgba(255,255,255,.45); cursor: pointer; transition: background var(--base) var(--ease), transform var(--base) var(--ease); }
 .gallery__dot.is-active { background: #fff; transform: scale(1.25); }
 @media (hover: none) { .gallery__btn { display: none; } }
+
+/* ── Мобильная шапка: корзина всегда на виду ─────────────────────────── */
+@media (max-width: 1279px) {
+  .masthead__actions { gap: var(--space-3); }
+  .masthead .cart-link {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    justify-content: center;
+    color: var(--text);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
+    box-shadow: var(--glass-shadow);
+  }
+  .masthead .cart-link__icon { display: block; }
+  .masthead .cart-link__label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .masthead .cart-link__count { position: absolute; top: -6px; right: -6px; }
+}
+@media (max-width: 767px) {
+  .masthead .cart-link { width: 36px; height: 36px; }
+  /* Первый экран на телефоне растёт по контенту: иначе фиксированная
+     высота обрезает блок, и «питч» налезает на кнопки героя. */
+  .hero { max-height: none; padding-block: var(--space-5) var(--space-7); }
+  .pitch { padding-block: var(--space-8); }
+}
