@@ -1,3 +1,4 @@
 /kinoperiferia
 /data/
 *.jsonl
+.env

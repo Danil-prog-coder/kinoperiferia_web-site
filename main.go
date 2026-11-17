@@ -19,6 +19,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/danil-prog-coder/kinoperiferia_web-site/internal/backup"
 	"github.com/danil-prog-coder/kinoperiferia_web-site/internal/orders"
 	"github.com/danil-prog-coder/kinoperiferia_web-site/internal/server"
 )
@@ -64,7 +65,19 @@ func run(log *slog.Logger) error {
 		n = notifier
 	}
 
-	store := orders.NewStore(env("ORDERS_FILE", "data/orders.jsonl"), n, log)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	// Бэкап данных в S3: восстановление — до того, как сайт начнёт принимать
+	// заявки, иначе он работал бы со старыми данными.
+	ordersPath := env("ORDERS_FILE", "data/orders.jsonl")
+	bk := backup.New(backup.ConfigFromEnv(os.Getenv), ordersPath, log)
+	if err := bk.Start(ctx); err != nil {
+		log.Info("остановка во время восстановления из S3 — выходим без бэкапа")
+		return nil
+	}
+
+	store := orders.NewStore(ordersPath, n, log)
 
 	app, err := server.New(templates, static, server.Options{
 		BaseURL: env("BASE_URL", ""),
@@ -85,8 +98,12 @@ func run(log *slog.Logger) error {
 		IdleTimeout:       90 * time.Second,
 	}
 
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
+	var bkDone sync.WaitGroup
+	bkDone.Add(1)
+	go func() {
+		defer bkDone.Done()
+		bk.Run(ctx)
+	}()
 
 	errc := make(chan error, 1)
 	go func() {
@@ -100,12 +117,19 @@ func run(log *slog.Logger) error {
 
 	select {
 	case err := <-errc:
+		stop()
+		bkDone.Wait()
 		return err
 	case <-ctx.Done():
 		log.Info("получен сигнал остановки, завершаем соединения")
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cancel()
-		return srv.Shutdown(shutdownCtx)
+		err := srv.Shutdown(shutdownCtx)
+		// Порядок гарантирован: новых заявок уже нет — снимаем финальный
+		// бэкап и только потом выходим.
+		bkDone.Wait()
+		bk.Final(90 * time.Second)
+		return err
 	}
 }
 
