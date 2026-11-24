@@ -168,7 +168,7 @@ func TestAPIProductsSortByPrice(t *testing.T) {
 	}
 }
 
-func TestProductPageShowsVariantsAndRelated(t *testing.T) {
+func TestProductPageShowsVariants(t *testing.T) {
 	body := get(t, newTestServer(t, nil), "/product/soty-titan").Body.String()
 
 	for _, want := range []string{
@@ -177,7 +177,6 @@ func TestProductPageShowsVariantsAndRelated(t *testing.T) {
 		"от 300 ₽",
 		"1 400 ₽",
 		"120 см",
-		"Из той же категории",
 		`"@type":"Product"`,
 	} {
 		if !strings.Contains(body, want) {
@@ -612,5 +611,65 @@ func TestProductPageSinglePhotoHasNoGallery(t *testing.T) {
 
 	if strings.Contains(body, "data-gallery") {
 		t.Error("у изделия с одним фото выведен слайдер")
+	}
+}
+
+// Под карточкой изделия ничего нет: ни других изделий, ни блока контактов.
+func TestProductPageShowsOnlyTheProduct(t *testing.T) {
+	body := get(t, newTestServer(t, nil), "/product/peli-1535-air").Body.String()
+
+	for _, unwanted := range []string{
+		"Из той же категории",
+		"Весь каталог",
+		`class="card"`,
+		"Не нашли нужное?",
+	} {
+		if strings.Contains(body, unwanted) {
+			t.Errorf("под карточкой изделия лишний блок: %q", unwanted)
+		}
+	}
+	if !strings.Contains(body, "Peli 1535 Air") {
+		t.Error("на странице нет самого изделия")
+	}
+}
+
+func TestOrderFormGroupsProductsByCategory(t *testing.T) {
+	body := get(t, newTestServer(t, orders.NewStore("", nil, nil)), "/order").Body.String()
+
+	for _, want := range []string{
+		`data-kp-select`,
+		`<optgroup label="Для камеры">`,
+		`<optgroup label="Сумки и кейсы">`,
+		`data-art="KP—18"`,
+		`data-image="/static/img/`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("в списке изделий нет %q", want)
+		}
+	}
+	if got, want := strings.Count(body, "<option "), catalog.Count()+1; got != want {
+		t.Errorf("в списке %d позиций, ожидалось %d (каталог + «кастом»)", got, want)
+	}
+}
+
+func TestFontsAreSelfHosted(t *testing.T) {
+	s := newTestServer(t, nil)
+
+	body := get(t, s, "/").Body.String()
+	if strings.Contains(body, "fonts.googleapis.com") {
+		t.Error("шрифты всё ещё грузятся с Google Fonts")
+	}
+
+	rec := get(t, s, "/static/fonts/golos-text-cyrillic.woff2")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("шрифт не отдаётся: %d", rec.Code)
+	}
+	if cc := rec.Header().Get("Cache-Control"); !strings.Contains(cc, "immutable") {
+		t.Errorf("шрифт без долгого кеша: %q", cc)
+	}
+
+	css := get(t, s, "/static/css/style.css").Body.String()
+	if !strings.Contains(css, `url("../fonts/golos-text-cyrillic.woff2")`) {
+		t.Error("в стилях нет @font-face для локального шрифта")
 	}
 }

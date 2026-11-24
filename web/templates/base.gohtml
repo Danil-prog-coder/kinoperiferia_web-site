@@ -17,9 +17,7 @@
 {{- end }}
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#141210">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<link rel="preload" href="/static/fonts/golos-text-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="{{ asset "/static/css/style.css" }}">
 <link rel="icon" href="{{ asset "/static/favicon.svg" }}" type="image/svg+xml">
 <script>document.documentElement.className = document.documentElement.className.replace('no-js', 'js');</script>
@@ -42,6 +40,9 @@
   </div>
 </div>
 <script src="{{ asset "/static/js/app.js" }}" defer></script>
+<script type="speculationrules">
+{"prefetch":[{"where":{"and":[{"href_matches":"/*"},{"not":{"href_matches":"/static/*"}},{"not":{"href_matches":"/api/*"}}]},"eagerness":"moderate"}]}
+</script>
 </body>
 </html>
 {{- end -}}

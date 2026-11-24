@@ -254,23 +254,11 @@ func (s *Server) handleProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	related := make([]catalog.Product, 0, 3)
-	for _, other := range catalog.ByCategory(p.Category) {
-		if other.Slug == p.Slug {
-			continue
-		}
-		related = append(related, other)
-		if len(related) == 3 {
-			break
-		}
-	}
-
 	page := productPage{
 		pageBase: s.base(r, "product",
 			p.Name+" — "+p.PriceLabel()+" — "+site.Brand,
 			p.Detail),
 		Product: p,
-		Related: related,
 		BackURL: "/?cat=" + p.Category,
 	}
 	page.OGType = "product"
@@ -288,9 +276,9 @@ const maxOrderBody = orders.MaxFiles*orders.MaxFileSize + 1<<20
 
 func (s *Server) contactFormBase() contactForm {
 	return contactForm{
-		Site:     siteView,
-		Errors:   map[string]string{},
-		Products: catalog.All(),
+		Site:   siteView,
+		Errors: map[string]string{},
+		Groups: productGroups(),
 	}
 }
 

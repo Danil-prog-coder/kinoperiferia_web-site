@@ -3,11 +3,27 @@
    шкала размеров и отступов, минимум декора и движения. */
 
 /* ── Шрифты ──────────────────────────────────────────────────────────── */
-/* Golos Text + IBM Plex Mono подключены через Google Fonts (см. base.gohtml).
-   Полноценный локальный самохостинг (woff2 в /static/fonts) — следующий шаг:
-   в среде сборки не удалось надёжно получить отдельные файлы под каждый
-   начертания без хостинга «вживую», поэтому пока используется CDN Google
-   с verify-able статическими весами 400/500. */
+/* Golos Text + IBM Plex Mono лежат рядом с сайтом (/static/fonts): из России
+   Google Fonts отвечает медленно и блокирует первую отрисовку. unicode-range
+   режет файлы по алфавитам — браузер качает только кириллицу и латиницу,
+   которые реально есть на странице. Golos — вариативный: 400 и 500 в одном
+   файле. Кириллица Golos предзагружается из base.gohtml. */
+@font-face { font-family: "Golos Text"; font-style: normal; font-weight: 400; font-display: swap; src: url("../fonts/golos-text-cyrillic-ext.woff2") format("woff2"); unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F; }
+@font-face { font-family: "Golos Text"; font-style: normal; font-weight: 400; font-display: swap; src: url("../fonts/golos-text-cyrillic.woff2") format("woff2"); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: "Golos Text"; font-style: normal; font-weight: 400; font-display: swap; src: url("../fonts/golos-text-latin-ext.woff2") format("woff2"); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: "Golos Text"; font-style: normal; font-weight: 400; font-display: swap; src: url("../fonts/golos-text-latin.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "Golos Text"; font-style: normal; font-weight: 500; font-display: swap; src: url("../fonts/golos-text-cyrillic-ext.woff2") format("woff2"); unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F; }
+@font-face { font-family: "Golos Text"; font-style: normal; font-weight: 500; font-display: swap; src: url("../fonts/golos-text-cyrillic.woff2") format("woff2"); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: "Golos Text"; font-style: normal; font-weight: 500; font-display: swap; src: url("../fonts/golos-text-latin-ext.woff2") format("woff2"); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: "Golos Text"; font-style: normal; font-weight: 500; font-display: swap; src: url("../fonts/golos-text-latin.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 400; font-display: swap; src: url("../fonts/ibm-plex-mono-400-cyrillic-ext.woff2") format("woff2"); unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F; }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 400; font-display: swap; src: url("../fonts/ibm-plex-mono-400-cyrillic.woff2") format("woff2"); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 400; font-display: swap; src: url("../fonts/ibm-plex-mono-400-latin-ext.woff2") format("woff2"); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 400; font-display: swap; src: url("../fonts/ibm-plex-mono-400-latin.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 500; font-display: swap; src: url("../fonts/ibm-plex-mono-500-cyrillic-ext.woff2") format("woff2"); unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F; }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 500; font-display: swap; src: url("../fonts/ibm-plex-mono-500-cyrillic.woff2") format("woff2"); unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116; }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 500; font-display: swap; src: url("../fonts/ibm-plex-mono-500-latin-ext.woff2") format("woff2"); unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 500; font-display: swap; src: url("../fonts/ibm-plex-mono-500-latin.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
 
 :root {
   /* Цвет */
@@ -64,6 +80,9 @@
   --radius-sm: 10px;
   --radius-lg: 28px;
   --header-h: 72px;
+
+  /* Нативные контролы (скроллбары, списки select, автозаполнение) — тёмные */
+  color-scheme: dark;
 }
 
 @media (max-width: 767px) {
@@ -499,7 +518,7 @@ p { max-width: 60ch; }
 .form__hint { font-size: var(--fs-small); color: var(--text-muted); }
 
 /* ── Изделие ─────────────────────────────────────────────────────────── */
-.bar { display: flex; align-items: center; justify-content: space-between; padding-block: var(--space-5); }
+.bar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); max-width: var(--content-max); margin-inline: auto; padding: var(--space-5) var(--margin); }
 .bar__brand { font-weight: 500; font-size: var(--fs-h3); }
 .bar__brand b { color: var(--accent); font-weight: 500; }
 .bar__close { font-size: var(--fs-label); font-weight: 500; color: var(--text-muted); }
@@ -703,14 +722,21 @@ section[id] { scroll-margin-top: var(--header-h); }
     0 8px 32px rgba(0,0,0,.35);
 }
 
-/* Фон, сквозь который «просвечивает» стекло */
-body {
+/* Фон, сквозь который «просвечивает» стекло. Раньше он висел на body с
+   background-attachment: fixed — браузер перерисовывал весь экран на каждом
+   кадре прокрутки. Теперь это отдельный закреплённый слой: рисуется один
+   раз, при скролле только сдвигается на видеокарте. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
   background:
     radial-gradient(60vw 50vh at 8% 4%, rgba(242,194,0,.16), transparent 60%),
     radial-gradient(50vw 50vh at 95% 35%, rgba(90,120,255,.14), transparent 60%),
-    radial-gradient(55vw 50vh at 20% 95%, rgba(255,90,140,.10), transparent 60%),
-    var(--bg);
-  background-attachment: fixed;
+    radial-gradient(55vw 50vh at 20% 95%, rgba(255,90,140,.10), transparent 60%);
+  transform: translateZ(0);
 }
 
 .masthead[data-scrolled],
@@ -725,9 +751,12 @@ body {
 .field input[type="text"], .field textarea, .field select, .field input[type="file"] {
   background: var(--glass-bg);
   border-color: var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+/* Настоящее размытие — только там, где под стеклом движется контент */
+.mobile-menu {
   -webkit-backdrop-filter: var(--glass-blur);
   backdrop-filter: var(--glass-blur);
-  box-shadow: var(--glass-shadow);
 }
 
 .masthead[data-scrolled] {
@@ -770,7 +799,9 @@ body {
 
 /* ══ iOS liquid glass: пружина, кромка, плавные переходы ═════════════════ */
 :root {
-  --spring: cubic-bezier(.34, 1.4, .64, 1);
+  /* Мягкая пружина: перелёт ~2% вместо прежних 16% — движение «доезжает»
+     без подпрыгивания */
+  --spring: cubic-bezier(.25, 1.05, .4, 1);
   --ease-out: cubic-bezier(.22, 1, .36, 1);
 
   --glass-bg: linear-gradient(135deg, rgba(255,255,255,.05), rgba(255,255,255,.01));
@@ -785,7 +816,7 @@ body {
 }
 @supports (transition-timing-function: linear(0, 1)) {
   :root {
-    --spring: linear(0, .009, .035 2.1%, .141 4.4%, .723 12.9%, .938 16.7%, 1.017 19.4%, 1.077 22.4%, 1.121 25.8%, 1.149 29.5%, 1.159 33.7%, 1.151 38.2%, 1.126 43.4%, 1.012 61.4%, .983 69.3%, .974 76.8%, .985 85.7%, 1);
+    --spring: linear(0, .043 3.8%, .145 7.7%, .275 11.5%, .412 15.4%, .542 19.2%, .657 23.1%, .754 26.9%, .833 30.8%, .894 34.6%, .94 38.5%, .972 42.3%, .994 46.2%, 1.008 50%, 1.016 53.8%, 1.02 61.5%, 1.016 69.2%, 1.011 76.9%, 1.006 84.6%, 1.002 92.3%, 1);
   }
 }
 
@@ -871,32 +902,39 @@ body {
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-lg);
   background: var(--glass-bg);
-  -webkit-backdrop-filter: var(--glass-blur);
-  backdrop-filter: var(--glass-blur);
   box-shadow: var(--glass-shadow);
 }
 .card__media, .hero__figure .frame, .product__figure, .ph, .cart-item__media {
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow);
 }
-.card { transition: transform .6s var(--spring); }
-.card:hover { transform: translateY(-3px); }
-.card__img { transition: transform .8s var(--spring); }
-.card:hover .card__img { transform: scale(1.03); }
+.card { transition: transform .5s var(--ease-out); }
+.card:hover { transform: translateY(-4px); }
+.card__media { transition: box-shadow .5s var(--ease-out), border-color .5s var(--ease-out); }
+.card:hover .card__media { border-color: rgba(255,255,255,.14); box-shadow: var(--glass-shadow), 0 18px 40px -18px rgba(0,0,0,.7); }
+.card__img { transition: transform .9s var(--ease-out); }
+.card:hover .card__img { transform: scale(1.035); }
+.card__name { transition: color .25s var(--ease-out); }
+.card:hover .card__name { color: #fff; }
 
-/* Нажатие */
+/* Нажатие: быстро «вдавливается», мягко отпружинивает */
 .btn, .tab, .icon-btn--mobile, .burger, .qv__close {
-  transition: transform .45s var(--spring), background-color var(--fast) var(--ease), color var(--fast) var(--ease), border-color var(--fast) var(--ease);
+  transition: transform .4s var(--spring), background-color .2s var(--ease-out), color .2s var(--ease-out), border-color .2s var(--ease-out), box-shadow .2s var(--ease-out);
 }
-.btn:active, .tab:active, .icon-btn--mobile:active, .burger:active, .qv__close:active { transform: scale(.95); transition-duration: .12s; }
+.btn:active, .tab:active, .icon-btn--mobile:active, .burger:active, .qv__close:active { transform: scale(.96); transition-duration: .1s; }
 
 /* Мобильное меню и быстрый просмотр */
-@keyframes kp-menu-in { from { opacity: 0; transform: scale(1.04); } to { opacity: 1; transform: none; } }
-@keyframes kp-item-in { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
-@keyframes kp-panel-spring { from { opacity: 0; transform: scale(.9) translateY(24px); } to { opacity: 1; transform: none; } }
+@keyframes kp-menu-in { from { opacity: 0; transform: scale(1.02); } to { opacity: 1; transform: none; } }
+@keyframes kp-menu-out { to { opacity: 0; transform: scale(1.02); } }
+@keyframes kp-item-in { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@keyframes kp-panel-spring { from { opacity: 0; transform: scale(.96) translateY(16px); } to { opacity: 1; transform: none; } }
+@keyframes kp-panel-out { to { opacity: 0; transform: scale(.97) translateY(10px); } }
+@keyframes kp-fade-out { to { opacity: 0; } }
 @media (prefers-reduced-motion: no-preference) {
-  .mobile-menu { animation: kp-menu-in .5s var(--ease-out); }
-  .mobile-menu nav a, .mobile-menu .btn { animation: kp-item-in .7s var(--spring) backwards; }
+  .mobile-menu { animation: kp-menu-in .4s var(--ease-out); }
+  .mobile-menu.is-closing { animation: kp-menu-out .22s var(--ease-out) forwards; }
+  .mobile-menu nav a, .mobile-menu .btn { animation: kp-item-in .6s var(--ease-out) backwards; }
+  .mobile-menu.is-closing nav a, .mobile-menu.is-closing .btn { animation: none; }
   .mobile-menu nav a:nth-child(1) { animation-delay: .05s; }
   .mobile-menu nav a:nth-child(2) { animation-delay: .10s; }
   .mobile-menu nav a:nth-child(3) { animation-delay: .15s; }
@@ -904,20 +942,25 @@ body {
   .mobile-menu nav a:nth-child(5) { animation-delay: .25s; }
   .mobile-menu nav a:nth-child(n+6) { animation-delay: .30s; }
   .mobile-menu .btn { animation-delay: .35s; }
-  .qv__panel { animation: kp-panel-spring .6s var(--spring); }
+  .qv__panel { animation: kp-panel-spring .5s var(--spring); }
+  .qv.is-closing .qv__panel { animation: kp-panel-out .22s var(--ease-out) forwards; }
+  .qv.is-closing .qv__backdrop { animation: kp-fade-out .22s var(--ease-out) forwards; }
 }
 
 /* ── Появление блоков при скролле (чистый CSS) ───────────────────────── */
+/* Только opacity и transform — их браузер анимирует на видеокарте. Раньше
+   здесь был ещё filter: blur(), который пересчитывался для каждой карточки
+   на каждом кадре прокрутки. */
 @keyframes kp-reveal {
-  from { opacity: 0; transform: translateY(28px); filter: blur(8px); }
-  to { opacity: 1; transform: none; filter: blur(0); }
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: none; }
 }
 @supports (animation-timeline: view()) {
   @media (prefers-reduced-motion: no-preference) {
     .section__head, .card, .steps li, .facts > *, .case, .pitch > *, .contact-info > *, .link-list a {
       animation: kp-reveal linear backwards;
       animation-timeline: view();
-      animation-range: entry 0% entry 55%;
+      animation-range: entry 0% entry 45%;
     }
   }
 }
@@ -926,16 +969,18 @@ body {
 @media (prefers-reduced-motion: no-preference) {
   @view-transition { navigation: auto; }
 
-  @keyframes kp-page-out { to { opacity: 0; transform: translateY(-10px); filter: blur(6px); } }
-  @keyframes kp-page-in { from { opacity: 0; transform: translateY(16px); filter: blur(8px); } }
-  ::view-transition-old(root) { animation: kp-page-out 220ms var(--ease-out) both; }
-  ::view-transition-new(root) { animation: kp-page-in 520ms var(--ease-out) both; }
-  ::view-transition-group(kp-nav-ind) { animation-duration: 600ms; animation-timing-function: var(--spring); }
+  /* Короткий кроссфейд без размытия: снимок всей страницы с blur() дорого
+     считать, и переход ощущался как задержка загрузки. */
+  @keyframes kp-page-out { to { opacity: 0; } }
+  @keyframes kp-page-in { from { opacity: 0; transform: translateY(8px); } }
+  ::view-transition-old(root) { animation: kp-page-out 160ms var(--ease-out) both; }
+  ::view-transition-new(root) { animation: kp-page-in 320ms var(--ease-out) both; }
+  ::view-transition-group(kp-nav-ind) { animation-duration: 500ms; animation-timing-function: var(--spring); }
 }
 
 /* Слайдер фотографий изделия */
 .gallery { position: relative; width: 100%; height: 100%; }
-.gallery__track { display: flex; width: 100%; height: 100%; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+.gallery__track { display: flex; width: 100%; height: 100%; overflow-x: auto; scroll-snap-type: x mandatory; scroll-behavior: smooth; scrollbar-width: none; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
 .gallery__track::-webkit-scrollbar { display: none; }
 .gallery__track:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .gallery__slide { flex: 0 0 100%; scroll-snap-align: start; scroll-snap-stop: always; }
@@ -945,8 +990,8 @@ body {
 .gallery__btn--prev { left: var(--space-3); padding-bottom: 3px; }
 .gallery__btn--next { right: var(--space-3); padding-bottom: 3px; }
 .gallery__dots { position: absolute; left: 50%; bottom: var(--space-3); transform: translateX(-50%); display: flex; gap: 6px; padding: 6px 10px; border-radius: 999px; background: rgba(20,20,20,.4); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
-.gallery__dot { width: 7px; height: 7px; padding: 0; border: 0; border-radius: 50%; background: rgba(255,255,255,.45); cursor: pointer; transition: background var(--base) var(--ease), transform var(--base) var(--ease); }
-.gallery__dot.is-active { background: #fff; transform: scale(1.25); }
+.gallery__dot { width: 7px; height: 7px; padding: 0; border: 0; border-radius: 999px; background: rgba(255,255,255,.45); cursor: pointer; transition: width .35s var(--ease-out), background-color .35s var(--ease-out); }
+.gallery__dot.is-active { width: 18px; background: #fff; }
 @media (hover: none) { .gallery__btn { display: none; } }
 
 /* ── Мобильная шапка: корзина всегда на виду ─────────────────────────── */
@@ -961,8 +1006,6 @@ body {
     border: 1px solid var(--glass-border);
     border-radius: var(--radius);
     background: var(--glass-bg);
-    -webkit-backdrop-filter: var(--glass-blur);
-    backdrop-filter: var(--glass-blur);
     box-shadow: var(--glass-shadow);
   }
   .masthead .cart-link__icon { display: block; }
@@ -976,3 +1019,220 @@ body {
   .hero { max-height: none; padding-block: var(--space-5) var(--space-7); }
   .pitch { padding-block: var(--space-8); }
 }
+
+/* ══ Выпадающий список «Изделие» ═════════════════════════════════════════
+   Без JS — нативный select, но в стиле сайта: своя стрелка, тёмный список
+   (color-scheme: dark). С JS поверх него собирается свой список: фото,
+   артикул, название и цена в строке, группы по разделам каталога, поиск
+   и управление с клавиатуры. Нативный select остаётся в форме и
+   отправляется как раньше. */
+.field select.select {
+  -webkit-appearance: none;
+  appearance: none;
+  min-height: 52px;
+  padding-right: 48px;
+  cursor: pointer;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%239a9892' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 1.5l5 5 5-5'/%3E%3C/svg%3E") no-repeat right 18px center / 12px 8px,
+    var(--glass-bg);
+  transition: border-color .2s var(--ease-out);
+}
+.field select.select:hover { border-color: rgba(255,255,255,.18); }
+.field select.select option,
+.field select.select optgroup { background: #1c1c1c; color: var(--text); }
+.field select.select optgroup { color: var(--text-muted); font-weight: 500; }
+
+.kp-select { position: relative; }
+.kp-select__native {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  opacity: 0;
+  pointer-events: none;
+  clip-path: inset(50%);
+}
+
+.kp-select__trigger {
+  width: 100%;
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 9px 16px 9px 9px;
+  text-align: left;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  background: var(--glass-bg);
+  box-shadow: var(--glass-shadow);
+  transition: border-color .2s var(--ease-out), background-color .2s var(--ease-out);
+}
+.kp-select__trigger:hover { border-color: rgba(255,255,255,.18); }
+.kp-select__trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.kp-select.is-open .kp-select__trigger { border-color: rgba(242,194,0,.55); }
+.kp-select__trigger .kp-select__text { flex: 1; }
+.kp-select__trigger .kp-select__name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kp-select__trigger.is-empty .kp-select__name { color: var(--text-muted); font-weight: 400; }
+
+.kp-select__chevron {
+  flex: none;
+  width: 12px;
+  height: 8px;
+  color: var(--text-muted);
+  transition: transform .35s var(--spring), color .2s var(--ease-out);
+}
+.kp-select.is-open .kp-select__chevron { transform: rotate(180deg); color: var(--accent); }
+
+/* Общие части строки: превью, артикул, название, цена */
+.kp-select__thumb {
+  flex: none;
+  width: 34px;
+  height: 42px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--paper);
+  display: grid;
+  place-items: center;
+}
+.kp-select__thumb img { width: 100%; height: 100%; object-fit: cover; }
+.kp-select__thumb--ph { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.08); color: var(--text-muted); font-family: var(--font-mono); font-size: 11px; }
+.kp-select__thumb--custom { background: rgba(242,194,0,.08); border: 1px dashed rgba(242,194,0,.45); color: var(--accent); }
+.kp-select__thumb--custom svg { width: 14px; height: 14px; }
+.kp-select__text { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.kp-select__art { font-family: var(--font-mono); font-size: 12px; line-height: 1.3; color: var(--text-muted); letter-spacing: .02em; }
+.kp-select__name { font-size: var(--fs-small); line-height: 1.3; font-weight: 500; color: var(--text); }
+.kp-select__price { flex: none; font-family: var(--font-mono); font-size: 14px; font-weight: 500; color: var(--text); white-space: nowrap; }
+
+/* Панель */
+.kp-select__panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: var(--radius);
+  /* Непрозрачный фон: форма под списком не просвечивает, а без
+     backdrop-filter панель открывается мгновенно и на слабых телефонах */
+  background: linear-gradient(180deg, #1f1f1f, #181818);
+  box-shadow: var(--glass-shadow), 0 24px 60px -16px rgba(0,0,0,.8);
+  transform-origin: 50% 0;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-6px) scale(.98);
+  pointer-events: none;
+  transition: opacity .18s var(--ease-out), transform .18s var(--ease-out), visibility 0s linear .18s;
+}
+.kp-select--up .kp-select__panel { top: auto; bottom: calc(100% + 8px); transform-origin: 50% 100%; transform: translateY(6px) scale(.98); }
+.kp-select.is-open .kp-select__panel {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  pointer-events: auto;
+  transition: opacity .2s var(--ease-out), transform .32s var(--spring), visibility 0s;
+}
+
+.kp-select__search {
+  position: relative;
+  flex: none;
+  margin-bottom: 6px;
+}
+.kp-select__search svg {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+/* .kp-select в селекторе — чтобы перебить общие стили полей формы
+   (.field input[type="text"] и жёлтую обводку .field input:focus) */
+.kp-select .kp-select__search input {
+  width: 100%;
+  height: 42px;
+  padding: 0 12px 0 38px;
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: var(--radius-sm);
+  background: rgba(255,255,255,.04);
+  box-shadow: none;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-small);
+  outline: none;
+  transition: border-color .2s var(--ease-out), background-color .2s var(--ease-out);
+}
+.kp-select .kp-select__search input::placeholder { color: var(--text-muted); }
+.kp-select .kp-select__search input:focus { outline: none; border-color: rgba(242,194,0,.45); background: rgba(255,255,255,.06); }
+
+.kp-select__list {
+  max-height: min(380px, 52vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,.18) transparent;
+  border-radius: var(--radius-sm);
+}
+.kp-select__list::-webkit-scrollbar { width: 8px; }
+.kp-select__list::-webkit-scrollbar-thumb { background: rgba(255,255,255,.16); border-radius: 8px; border: 2px solid transparent; background-clip: padding-box; }
+
+.kp-select__group {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 10px 10px 6px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: linear-gradient(to bottom, #1d1d1d 75%, rgba(29,29,29,0));
+}
+
+.kp-select__option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 7px 10px 7px 7px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color .15s var(--ease-out);
+}
+.kp-select__option + .kp-select__option { margin-top: 2px; }
+.kp-select__option .kp-select__text { flex: 1; }
+.kp-select__option.is-active { background: rgba(255,255,255,.07); }
+.kp-select__option[aria-selected="true"] { background: rgba(242,194,0,.1); }
+.kp-select__option[aria-selected="true"].is-active { background: rgba(242,194,0,.15); }
+.kp-select__option[aria-selected="true"] .kp-select__name { color: var(--accent); }
+.kp-select__check {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--accent);
+  opacity: 0;
+  transform: scale(.6);
+  transition: opacity .2s var(--ease-out), transform .3s var(--spring);
+}
+.kp-select__option[aria-selected="true"] .kp-select__check { opacity: 1; transform: none; }
+.kp-select__option[hidden], .kp-select__group[hidden] { display: none; }
+
+.kp-select__empty { padding: var(--space-5) var(--space-3); text-align: center; font-size: var(--fs-small); color: var(--text-muted); max-width: none; }
+.kp-select__empty[hidden] { display: none; }
+
+@media (max-width: 767px) {
+  .kp-select__price { font-size: 13px; }
+  .kp-select__list { max-height: 50vh; }
+}
+@media (hover: none) {
+  .kp-select .kp-select__search input { font-size: 16px; } /* iOS не зумит поле при фокусе */
+}
+/* Подсказку под полем прячем, пока открыт список: иначе её первая буква
+   выглядывает из-за скруглённого угла панели */
+.kp-select ~ .field__hint { transition: opacity .2s var(--ease-out); }
+.kp-select.is-open ~ .field__hint { opacity: 0; }
