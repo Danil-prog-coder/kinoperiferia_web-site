@@ -109,7 +109,8 @@ func TestBySlug(t *testing.T) {
 
 func TestSortPriceKeepsPricelessLast(t *testing.T) {
 	for _, mode := range []string{SortPriceAsc, SortPriceDesc} {
-		list := Sort(All(), mode)
+		// В каталоге может не остаться позиций без цены, поэтому добавляем свою.
+		list := Sort(append(All(), Product{Slug: "bez-ceny"}), mode)
 		if last := list[len(list)-1]; last.SortPrice() != 0 {
 			t.Errorf("%s: последним оказалось %q с ценой %d, ожидалось изделие без цены",
 				mode, last.Slug, last.SortPrice())

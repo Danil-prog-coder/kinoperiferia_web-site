@@ -186,7 +186,8 @@ func TestProductPageShowsVariants(t *testing.T) {
 }
 
 func TestProductPageShowsUnknownPriceAsXXX(t *testing.T) {
-	body := get(t, newTestServer(t, nil), "/product/cinesaddle-podlokotnik").Body.String()
+	// У дождевика цена есть только у большого исполнения, малое — XXX.
+	body := get(t, newTestServer(t, nil), "/product/dozhdevik").Body.String()
 
 	if !strings.Contains(body, catalog.PriceUnknown) {
 		t.Error("цена без согласования показана не как XXX")
@@ -289,14 +290,18 @@ func TestAPISingleProduct(t *testing.T) {
 }
 
 func TestAPIMarksUnknownPriceAsXXX(t *testing.T) {
-	rec := get(t, newTestServer(t, nil), "/api/products/cinesaddle-podlokotnik")
+	rec := get(t, newTestServer(t, nil), "/api/products/dozhdevik")
 
 	var p productDTO
 	if err := json.Unmarshal(rec.Body.Bytes(), &p); err != nil {
 		t.Fatalf("ответ не разбирается: %v", err)
 	}
-	if p.Price != 0 || p.PriceLabel != catalog.PriceUnknown {
-		t.Errorf("цена без согласования: %+v", p)
+	last := p.Variants[len(p.Variants)-1]
+	if last.Price != 0 || last.Negotiable || last.PriceLabel != catalog.PriceUnknown {
+		t.Errorf("исполнение без согласованной цены: %+v", last)
+	}
+	if p.PriceLabel != "от "+catalog.FormatRub(5500) {
+		t.Errorf("цена изделия %q", p.PriceLabel)
 	}
 }
 

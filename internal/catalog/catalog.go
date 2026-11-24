@@ -149,8 +149,8 @@ var products = []Product{
 		Desc:   "Устойчивая статика и меньшая нагрузка на руки.",
 		Detail: "Версия седла под опору предплечьями: камера стоит стабильнее на длинных " +
 			"статичных планах, руки устают заметно меньше.",
-		InStock: true,
-		Specs:   baseSpecs(Spec{Name: "Сценарий", Value: "Статика, съёмка с рук"}),
+		Price: 17500, InStock: true,
+		Specs: baseSpecs(Spec{Name: "Сценарий", Value: "Статика, съёмка с рук"}),
 	},
 	{
 		Slug: "sunhood", Art: "KP—03", Name: "Санхуд", Category: "camera",
