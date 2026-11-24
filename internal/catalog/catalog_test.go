@@ -99,8 +99,8 @@ func TestBySlug(t *testing.T) {
 	if !ok {
 		t.Fatal("cinesaddle не найден")
 	}
-	if got := p.MinPrice(); got != 15500 {
-		t.Errorf("цена синесэдла = %d, ожидалось 15500", got)
+	if got := p.MinPrice(); got != 17500 {
+		t.Errorf("цена синесэдла = %d, ожидалось 17500", got)
 	}
 	if _, ok := BySlug("нет-такого"); ok {
 		t.Error("несуществующий slug найден")
