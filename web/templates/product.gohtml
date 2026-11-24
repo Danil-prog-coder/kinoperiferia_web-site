@@ -78,23 +78,5 @@
   </div>
 </article>
 
-{{- if .Related }}
-<section class="section section--flush-top">
-  <div class="rule-thin"></div>
-  <div class="section__head" style="padding-top: clamp(30px, 4vw, 60px)">
-    <div>
-      <div class="eyebrow">Из той же категории</div>
-      <h2 class="section__title">{{ .Product.CategoryTitle }}</h2>
-    </div>
-    <p class="section__note"><a href="{{ .BackURL }}" style="color:var(--accent)">Весь каталог →</a></p>
-  </div>
-  <div class="grid">
-    {{- range .Related }}
-    {{ template "card" . }}
-    {{- end }}
-  </div>
-</section>
-{{- end }}
 
-{{ template "contacts" . }}
 {{- end -}}

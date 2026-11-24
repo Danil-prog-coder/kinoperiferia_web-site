@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"io/fs"
 	"net/http"
+	"strings"
 )
 
 // assetVersions хранит короткий хеш содержимого каждого статического файла,
@@ -42,13 +43,19 @@ func (a assetVersions) URL(p string) string {
 }
 
 // staticHandler отдаёт встроенные файлы. Запрос с параметром v считается
-// версионированным, поэтому кешируется на год.
+// версионированным, поэтому кешируется на год. Шрифты подключаются из CSS
+// без версии, но их файлы никогда не меняются под тем же именем — тоже на
+// год. Фотографии каталога живут сутки и ещё неделю отдаются из кеша, пока
+// браузер в фоне проверяет свежесть: повторные визиты не ждут сеть.
 func staticHandler(fsys fs.FS) http.Handler {
 	files := http.FileServer(http.FS(fsys))
 	return http.StripPrefix("/static/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Query().Get("v") != "" {
+		switch {
+		case r.URL.Query().Get("v") != "", strings.HasPrefix(r.URL.Path, "fonts/"):
 			w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
-		} else {
+		case strings.HasPrefix(r.URL.Path, "img/"):
+			w.Header().Set("Cache-Control", "public, max-age=86400, stale-while-revalidate=604800")
+		default:
 			w.Header().Set("Cache-Control", "public, max-age=3600")
 		}
 		files.ServeHTTP(w, r)

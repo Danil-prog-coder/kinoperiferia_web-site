@@ -86,11 +86,11 @@ type indexPage struct {
 	Contact contactForm
 }
 
-// productPage — страница изделия.
+// productPage — страница изделия. Под карточкой ничего нет: ни похожих
+// позиций, ни блока контактов — только само изделие.
 type productPage struct {
 	pageBase
 	Product catalog.Product
-	Related []catalog.Product
 	BackURL string
 }
 
@@ -111,10 +111,39 @@ type contactForm struct {
 	Site      siteData
 	Form      orderForm
 	Errors    map[string]string
-	Products  []catalog.Product
+	Groups    []productGroup
 	Submitted bool
 	Failed    bool
 	OrderID   string
+}
+
+// productGroup — изделия одной категории в списке «Изделие» формы заявки:
+// выпадающий список группируется по разделам каталога, как и сама витрина.
+type productGroup struct {
+	Title    string
+	Products []catalog.Product
+}
+
+// productGroups раскладывает каталог по категориям в порядке табов витрины.
+// Пустые категории пропускаются.
+func productGroups() []productGroup {
+	all := catalog.All()
+	out := make([]productGroup, 0, len(catalog.Categories))
+	for _, c := range catalog.Categories {
+		if c.Slug == "all" {
+			continue
+		}
+		var list []catalog.Product
+		for _, p := range all {
+			if p.Category == c.Slug {
+				list = append(list, p)
+			}
+		}
+		if len(list) > 0 {
+			out = append(out, productGroup{Title: c.Title, Products: list})
+		}
+	}
+	return out
 }
 
 // orderPage — страница заявки.

@@ -120,11 +120,15 @@
 
   <div class="field" data-product-field>
     <label for="product">Изделие</label>
-    <select id="product" name="product">
+    <select id="product" name="product" class="select" data-kp-select>
       <option value="">Кастомное изделие / не выбрано</option>
       {{- $selected := .Form.Product -}}
-      {{- range .Products }}
-      <option value="{{ .Slug }}"{{ if eq .Slug $selected }} selected{{ end }}>{{ .Art }} · {{ .Name }} — {{ .PriceLabel }}</option>
+      {{- range .Groups }}
+      <optgroup label="{{ .Title }}">
+        {{- range .Products }}
+        <option value="{{ .Slug }}"{{ if eq .Slug $selected }} selected{{ end }} data-art="{{ .Art }}" data-name="{{ .Name }}" data-price="{{ .PriceLabel }}"{{ if .HasPhoto }} data-image="{{ .Image }}"{{ end }}>{{ .Art }} · {{ .Name }} — {{ .PriceLabel }}</option>
+        {{- end }}
+      </optgroup>
       {{- end }}
     </select>
     <span class="field__hint">Или добавьте несколько изделий в корзину прямо из каталога.</span>

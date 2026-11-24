@@ -2,9 +2,9 @@
    Без JS сайт полностью работоспособен: фильтры каталога — обычные ссылки,
    форма заявки — обычный submit, карточка изделия — отдельная страница.
    Этот файл добавляет фильтрацию без перезагрузки, быстрый просмотр в
-   боковой панели, шапку со scroll-spy и мобильное меню. Раздел 7 ТЗ убрал
-   декоративную анимацию: здесь нет ни появления блоков при скролле, ни
-   параллакса — только отклик на действия пользователя. */
+   боковой панели, шапку со scroll-spy, мобильное меню и список изделий
+   в форме заявки. Анимации — только opacity и transform, чтобы браузер
+   вёл их на видеокарте и не перерисовывал страницу. */
 (function () {
   'use strict';
 
@@ -170,8 +170,12 @@
   /* ── Шапка: фон и линия при скролле ────────────────────────────────── */
   var header = document.querySelector('[data-header]');
   if (header) {
+    var scrolled = null;
     var syncHeader = function () {
-      if (window.scrollY > 4) header.setAttribute('data-scrolled', '');
+      var now = window.scrollY > 4;
+      if (now === scrolled) return; /* без лишних пересчётов стилей на каждом кадре */
+      scrolled = now;
+      if (now) header.setAttribute('data-scrolled', '');
       else header.removeAttribute('data-scrolled');
     };
     syncHeader();
@@ -228,20 +232,41 @@
     });
   }
 
+  /* Прячет элемент после CSS-анимации закрытия (класс is-closing). Если
+     анимаций нет (reduced motion) или событие не пришло — прячет сразу
+     или по таймеру, чтобы элемент не завис полупрозрачным. */
+  function hideAnimated(el, done) {
+    if (reduced) { done(); return; }
+    var finished = false;
+    var finish = function () {
+      if (finished) return;
+      finished = true;
+      el.classList.remove('is-closing');
+      el.removeEventListener('animationend', onEnd);
+      done();
+    };
+    var onEnd = function (e) { if (e.target === el || el.contains(e.target)) finish(); };
+    el.classList.add('is-closing');
+    el.addEventListener('animationend', onEnd);
+    window.setTimeout(finish, 320);
+  }
+
   /* ── Мобильное меню ────────────────────────────────────────────────── */
   var menuToggle = document.querySelector('[data-menu-toggle]');
   var mobileMenu = document.querySelector('[data-mobile-menu]');
   if (menuToggle && mobileMenu) {
     var closeMenu = function () {
-      mobileMenu.hidden = true;
+      if (mobileMenu.hidden || mobileMenu.classList.contains('is-closing')) return;
       menuToggle.setAttribute('aria-expanded', 'false');
       document.body.style.overflow = '';
+      hideAnimated(mobileMenu, function () { mobileMenu.hidden = true; });
     };
     menuToggle.addEventListener('click', function () {
-      var open = mobileMenu.hidden;
-      mobileMenu.hidden = !open;
-      menuToggle.setAttribute('aria-expanded', String(open));
-      document.body.style.overflow = open ? 'hidden' : '';
+      if (!mobileMenu.hidden) { closeMenu(); return; }
+      mobileMenu.classList.remove('is-closing');
+      mobileMenu.hidden = false;
+      menuToggle.setAttribute('aria-expanded', 'true');
+      document.body.style.overflow = 'hidden';
     });
     mobileMenu.addEventListener('click', function (e) {
       if (e.target.closest('a')) closeMenu();
@@ -559,12 +584,39 @@
     bindAddToCart(panel, p, function () { return selectedVariant; });
   }
 
+  /* Данные изделия запрашиваются заранее — когда курсор лёг на карточку или
+     палец коснулся её. К моменту клика JSON и первое фото уже в кеше, и
+     быстрый просмотр открывается без паузы. */
+  var productCache = {};
+  function loadProduct(slug) {
+    if (!productCache[slug]) {
+      productCache[slug] = fetch('/api/products/' + encodeURIComponent(slug), { headers: { Accept: 'application/json' } })
+        .then(function (r) {
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          return r.json();
+        })
+        .then(function (p) {
+          var first = p.images && p.images.length ? p.images[0] : (p.hasPhoto ? p.image : '');
+          if (first) { var img = new Image(); img.decoding = 'async'; img.src = first; }
+          return p;
+        });
+      productCache[slug].catch(function () { delete productCache[slug]; });
+    }
+    return productCache[slug];
+  }
+
+  function prefetchFromEvent(e) {
+    var card = e.target.closest ? e.target.closest('[data-quick-view]') : null;
+    if (card) loadProduct(card.getAttribute('data-quick-view')).catch(function () {});
+  }
+  if ('fetch' in window) {
+    document.addEventListener('pointerover', prefetchFromEvent, { passive: true });
+    document.addEventListener('touchstart', prefetchFromEvent, { passive: true });
+    document.addEventListener('focusin', prefetchFromEvent);
+  }
+
   function openQuickView(card, slug, href) {
-    return fetch('/api/products/' + encodeURIComponent(slug), { headers: { Accept: 'application/json' } })
-      .then(function (r) {
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        return r.json();
-      })
+    return loadProduct(slug)
       .then(function (p) {
         lastFocus = document.activeElement;
 
@@ -576,6 +628,7 @@
 
         var transition = morph(function () {
           if (activeMedia) activeMedia.style.viewTransitionName = '';
+          overlay.classList.remove('is-closing');
           renderOverlay(p);
           var figure = overlay.querySelector('.product__figure');
           if (figure && activeMedia) figure.style.viewTransitionName = MEDIA_NAME;
@@ -597,6 +650,7 @@
   }
 
   function hideOverlay() {
+    overlay.classList.remove('is-closing');
     overlay.hidden = true;
     overlay.setAttribute('aria-hidden', 'true');
     var panel = overlay.querySelector('[data-qv-panel]');
@@ -617,8 +671,10 @@
       });
       transition.finished.then(releaseMedia, releaseMedia);
     } else {
-      hideOverlay();
       releaseMedia();
+      hideAnimated(overlay, function () {
+        if (!quickViewOpen) hideOverlay();
+      });
     }
 
     if (!pop) history.back();
@@ -690,6 +746,273 @@
       })
       .catch(function () { /* без JS/API таблица исполнений остаётся статичной — цену и фото не переключить, но страница рабочая */ });
   }
+
+  /* ── Список «Изделие» в форме заявки ─────────────────────────────────
+     Нативный select остаётся в форме (его значение и отправляется), а
+     поверх собирается свой список в стиле сайта: превью, артикул, цена,
+     группы по разделам, поиск. Роли ARIA — combobox/listbox: читалки
+     экрана видят обычный выпадающий список. */
+  var SVG_CHEVRON = '<svg class="kp-select__chevron" viewBox="0 0 12 8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 1.5l5 5 5-5"/></svg>';
+  var SVG_CHECK = '<svg class="kp-select__check" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5"/></svg>';
+  var SVG_SEARCH = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="7" cy="7" r="5"/><path d="M11 11l3.5 3.5"/></svg>';
+  var SVG_PLUS = '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M7 2v10M2 7h10"/></svg>';
+  var selectSeq = 0;
+
+  function selectRowHTML(o) {
+    var thumb;
+    if (!o.value) thumb = '<span class="kp-select__thumb kp-select__thumb--custom">' + SVG_PLUS + '</span>';
+    else if (o.image) thumb = '<span class="kp-select__thumb"><img src="' + esc(o.image) + '" alt="" loading="lazy" decoding="async"></span>';
+    else thumb = '<span class="kp-select__thumb kp-select__thumb--ph">КП</span>';
+    return thumb +
+      '<span class="kp-select__text">' +
+        (o.art ? '<span class="kp-select__art">' + esc(o.art) + '</span>' : '<span class="kp-select__art">Под ваш сетап</span>') +
+        '<span class="kp-select__name">' + esc(o.name) + '</span>' +
+      '</span>' +
+      (o.price ? '<span class="kp-select__price">' + esc(o.price) + '</span>' : '');
+  }
+
+  function enhanceSelect(native) {
+    var uid = 'kp-select-' + (++selectSeq);
+    var label = native.id ? document.querySelector('label[for="' + native.id + '"]') : null;
+
+    /* Модель: группы и опции из разметки select */
+    var options = [];
+    var groups = [];
+    Array.prototype.forEach.call(native.children, function (node) {
+      if (node.tagName === 'OPTGROUP') {
+        var g = { label: node.label, items: [] };
+        groups.push(g);
+        Array.prototype.forEach.call(node.children, function (opt) { g.items.push(readOption(opt)); });
+      } else if (node.tagName === 'OPTION') {
+        groups.push({ label: '', items: [readOption(node)] });
+      }
+    });
+    function readOption(opt) {
+      var o = {
+        el: opt,
+        value: opt.value,
+        art: opt.getAttribute('data-art') || '',
+        name: opt.getAttribute('data-name') || (opt.value ? opt.textContent : 'Кастомное изделие'),
+        price: opt.getAttribute('data-price') || '',
+        image: opt.getAttribute('data-image') || ''
+      };
+      o.search = (o.art + ' ' + o.name + ' ' + o.art.replace(/\D/g, '')).toLowerCase();
+      options.push(o);
+      return o;
+    }
+
+    var root = document.createElement('div');
+    root.className = 'kp-select';
+    native.parentNode.insertBefore(root, native);
+    root.appendChild(native);
+    native.classList.add('kp-select__native');
+    native.tabIndex = -1;
+    native.setAttribute('aria-hidden', 'true');
+
+    var trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = 'kp-select__trigger';
+    trigger.id = uid + '-trigger';
+    trigger.setAttribute('aria-haspopup', 'listbox');
+    trigger.setAttribute('aria-expanded', 'false');
+    trigger.setAttribute('aria-controls', uid + '-list');
+    root.appendChild(trigger);
+
+    if (label) {
+      label.id = label.id || uid + '-label';
+      label.removeAttribute('for');
+      label.addEventListener('click', function () { trigger.focus(); });
+      trigger.setAttribute('aria-labelledby', label.id + ' ' + trigger.id);
+    }
+
+    var panel = document.createElement('div');
+    panel.className = 'kp-select__panel';
+    var listHTML = '';
+    var idx = 0;
+    groups.forEach(function (g, gi) {
+      if (g.label) listHTML += '<li class="kp-select__group" role="presentation" data-group="' + gi + '">' + esc(g.label) + '</li>';
+      g.items.forEach(function (o) {
+        o.id = uid + '-opt-' + (idx++);
+        o.group = gi;
+        listHTML += '<li class="kp-select__option" role="option" id="' + o.id + '" aria-selected="false" data-value="' + esc(o.value) + '">' +
+          selectRowHTML(o) + SVG_CHECK + '</li>';
+      });
+    });
+    panel.innerHTML =
+      '<div class="kp-select__search">' + SVG_SEARCH +
+        '<input type="text" role="combobox" aria-autocomplete="list" aria-expanded="true" aria-controls="' + uid + '-list" ' +
+        'aria-label="Поиск изделия по названию или артикулу" placeholder="Поиск: название или артикул" autocomplete="off" spellcheck="false">' +
+      '</div>' +
+      '<ul class="kp-select__list" role="listbox" id="' + uid + '-list"' + (label ? ' aria-labelledby="' + label.id + '"' : '') + '>' + listHTML + '</ul>' +
+      '<p class="kp-select__empty" hidden>Ничего не нашлось — опишите изделие в поле ниже</p>';
+    root.appendChild(panel);
+
+    var search = panel.querySelector('input');
+    var list = panel.querySelector('.kp-select__list');
+    var empty = panel.querySelector('.kp-select__empty');
+    options.forEach(function (o) { o.li = document.getElementById(o.id); });
+    var groupEls = Array.prototype.slice.call(list.querySelectorAll('.kp-select__group'));
+
+    var active = null;
+    var isOpen = false;
+
+    function current() {
+      return options.filter(function (o) { return o.value === native.value; })[0] || options[0];
+    }
+
+    function renderTrigger() {
+      var o = current();
+      var shown = o.value ? o : { value: '', art: '', name: 'Не выбрано — опишу задачу сам', price: '' };
+      trigger.innerHTML = selectRowHTML(shown) + SVG_CHEVRON;
+      trigger.classList.toggle('is-empty', !o.value);
+      options.forEach(function (x) { x.li.setAttribute('aria-selected', String(x === o)); });
+    }
+
+    function visible() { return options.filter(function (o) { return !o.li.hidden; }); }
+
+    function setActive(o, scroll) {
+      if (active) active.li.classList.remove('is-active');
+      active = o;
+      if (!o) { search.removeAttribute('aria-activedescendant'); return; }
+      o.li.classList.add('is-active');
+      search.setAttribute('aria-activedescendant', o.id);
+      if (scroll) {
+        /* Строку держим в видимой части с учётом липкого заголовка группы */
+        var top = o.li.offsetTop - 34;
+        var bottom = o.li.offsetTop + o.li.offsetHeight + 6;
+        if (top < list.scrollTop) list.scrollTop = top;
+        else if (bottom > list.scrollTop + list.clientHeight) list.scrollTop = bottom - list.clientHeight;
+      }
+    }
+
+    function filter(q) {
+      q = q.trim().toLowerCase();
+      var any = false;
+      options.forEach(function (o) {
+        var hit = !q || o.search.indexOf(q) !== -1 || (!o.value && 'кастомное своё свое под заказ'.indexOf(q) !== -1);
+        o.li.hidden = !hit;
+        if (hit) any = true;
+      });
+      groupEls.forEach(function (g) {
+        var gi = Number(g.getAttribute('data-group'));
+        g.hidden = !options.some(function (o) { return o.group === gi && !o.li.hidden; });
+      });
+      empty.hidden = any;
+      var v = visible();
+      setActive(v.indexOf(active) !== -1 ? active : v[0] || null, true);
+    }
+
+    /* Список открывается вниз, как и ждёт глаз. Если снизу не помещается —
+       плавно докручиваем страницу, но так, чтобы поле не уехало под липкую
+       шапку. Вверх открываем, только когда докрутить некуда (конец
+       страницы), а сверху места больше. */
+    function headerOffset() {
+      var h = document.querySelector('[data-header]');
+      return (h ? h.offsetHeight : 0) + 12;
+    }
+
+    function place(allowScroll) {
+      root.classList.remove('kp-select--up');
+      var rect = trigger.getBoundingClientRect();
+      var panelH = panel.offsetHeight;
+      var overflow = rect.bottom + 8 + panelH + 16 - window.innerHeight;
+      if (overflow <= 0) return;
+
+      var doc = document.documentElement;
+      var room = doc.scrollHeight - window.innerHeight - window.scrollY;
+      var shift = Math.min(overflow, room, Math.max(0, rect.top - headerOffset()));
+      var above = rect.top - headerOffset();
+      var below = window.innerHeight - rect.bottom;
+
+      if (shift < overflow && above > below && above >= panelH + 8) {
+        root.classList.add('kp-select--up');
+        return;
+      }
+      if (allowScroll && shift > 0) {
+        window.scrollBy({ top: shift, behavior: reduced ? 'auto' : 'smooth' });
+      }
+    }
+
+    function open() {
+      if (isOpen) return;
+      isOpen = true;
+      search.value = '';
+      filter('');
+      place(true);
+      root.classList.add('is-open');
+      trigger.setAttribute('aria-expanded', 'true');
+      var sel = current();
+      setActive(sel, false);
+      list.scrollTop = 0;
+      setActive(sel, true);
+      /* Фокус в поиск — без прыжка страницы на мобильных */
+      try { search.focus({ preventScroll: true }); } catch (e) { search.focus(); }
+      document.addEventListener('pointerdown', onOutside, true);
+    }
+
+    function close(returnFocus) {
+      if (!isOpen) return;
+      isOpen = false;
+      root.classList.remove('is-open');
+      trigger.setAttribute('aria-expanded', 'false');
+      document.removeEventListener('pointerdown', onOutside, true);
+      if (returnFocus) trigger.focus();
+    }
+
+    function choose(o) {
+      if (!o) return;
+      var changed = native.value !== o.value;
+      native.value = o.value;
+      renderTrigger();
+      close(true);
+      if (changed) native.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
+    function onOutside(e) {
+      if (!root.contains(e.target)) close(false);
+    }
+
+    trigger.addEventListener('click', function () { if (isOpen) close(true); else open(); });
+    trigger.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        open();
+      }
+    });
+
+    search.addEventListener('input', function () { filter(search.value); });
+    search.addEventListener('keydown', function (e) {
+      var v = visible();
+      var i = v.indexOf(active);
+      if (e.key === 'ArrowDown') { e.preventDefault(); setActive(v[Math.min(v.length - 1, i + 1)] || v[0], true); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); setActive(v[Math.max(0, i - 1)] || v[0], true); }
+      else if (e.key === 'Home' && !search.value) { e.preventDefault(); setActive(v[0], true); }
+      else if (e.key === 'End' && !search.value) { e.preventDefault(); setActive(v[v.length - 1], true); }
+      else if (e.key === 'Enter') { e.preventDefault(); choose(active); }
+      else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(true); }
+      else if (e.key === 'Tab') { close(false); }
+    });
+
+    list.addEventListener('pointermove', function (e) {
+      var li = e.target.closest('.kp-select__option');
+      if (!li || (active && active.li === li)) return;
+      setActive(options.filter(function (o) { return o.li === li; })[0], false);
+    });
+    list.addEventListener('click', function (e) {
+      var li = e.target.closest('.kp-select__option');
+      if (li) choose(options.filter(function (o) { return o.li === li; })[0]);
+    });
+    /* Клик по строке не должен уводить фокус из поиска */
+    list.addEventListener('mousedown', function (e) { e.preventDefault(); });
+
+    native.addEventListener('change', renderTrigger);
+    if (native.form) native.form.addEventListener('reset', function () { window.setTimeout(renderTrigger, 0); });
+    window.addEventListener('resize', function () { if (isOpen) place(false); });
+
+    renderTrigger();
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll('select[data-kp-select]'), enhanceSelect);
 
   /* ── Форма заявки: состояние отправки ─────────────────────────────── */
   var orderForm = document.querySelector('[data-order-form]');
